@@ -1,0 +1,19 @@
+[info] [2026-08-31T19:24:38.845Z] : 
+[info] [2026-08-31T19:24:38.848Z] : Click this URL to login to your Zoho Account
+[info] [2026-08-31T19:24:38.849Z] : https://accounts.zoho.com/oauth/v2/auth?client_id=1000.gnjph6g96nf23jd4u14tba2egykhik&scope=ZAPPS.apps.ALL%20AaaServer.profile.READ%20ZMProcessors.connectors.CREATE&response_type=code&access_type=offline&prompt=consent&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] [2026-08-31T19:24:38.849Z] : Note: To login to CN DC, update the above URL from accounts.zoho.com to accounts.zoho.com.cn
+[info] [2026-08-31T19:24:38.850Z] : 
+[debug] [2026-08-31T19:25:43.337Z] : DCType Of the user is us
+[debug] [2026-08-31T19:25:43.340Z] : >>>> HTTP REQUEST : POST https://accounts.zoho.com/oauth/v2/token 
+<request query omitted>
+
+[debug] [2026-08-31T19:25:44.014Z] : <<<< HTTP RESPONSE : 200
+Response Headers{"server":"ZGS","date":"Mon, 31 Aug 2026 19:25:38 GMT","content-type":"application/json;charset=UTF-8","content-length":"337","connection":"keep-alive","set-cookie":["zalb_b266a5bf57=2ee776399749be0d92a8320fb3a08dbc; Path=/; Secure; HttpOnly","iamcsr=52957b8d-060b-4030-85fd-cb0c614e8741;path=/;SameSite=Strict;Secure;priority=high"],"cache-control":"no-store","x-content-type-options":"nosniff","pragma":"no-cache","x-frame-options":"SAMEORIGIN","content-language":"en-US","strict-transport-security":"max-age=64072000; includeSubDomains; preload"}
+
+[debug] [2026-08-31T19:25:44.015Z] : TOTAL TIME TAKEN : 671 ms
+
+[debug] [2026-08-31T19:25:44.032Z] : >>>> HTTP REQUEST : GET https://accounts.zoho.com/oauth/user/info 
+
+[debug] [2026-08-31T19:25:44.275Z] : <<<< HTTP RESPONSE : 200
+Response Headers{"server":"ZGS","date":"Mon, 31 Aug 2026 19:25:38 GMT","content-type":"application/json;charset=UTF-8","content-length":"133","connection":"keep-alive","set-cookie":["zalb_b266a5bf57=eec3a75d333f4bdde33eea5371b7c1c4; Path=/; Secure; HttpOnly","iamcsr=47c6121f-99a4-48d5-bb6d-a64dc8754b11;path=/;SameSite=Strict;Secure;priority=high"],"access-control-allow-credentials":"true","access-control-allow-methods":"GET","x-content-type-options":"nosniff","access-control-allow-headers":"Authorization","cache-control":"private,no-cache,no-store,max-age=0,must-revalidate","pragma":"no-cache","expires":"Thu, 01 Jan 1970 00:00:00 GMT","x-frame-options":"SAMEORIGIN","content-language":"en-US","strict-transport-security":"max-age=64072000; includeSubDomains; preload"}
+
