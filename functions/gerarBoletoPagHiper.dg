@@ -1,0 +1,108 @@
+/* 
+   ARQUIVO: functions/gerarBoletoPagHiper.dg
+   FUNÇÃO: Deluge Serverless Proxy para criação de transações na PagHiper.
+   Garante isolamento de credenciais e validação de segurança.
+*/
+response = Map();
+
+// 1. CAPTURAR OS PARÂMETROS ENVIADOS PELO WIDGET
+valorTotal = input.get("valor_total");
+cpfCnpj = input.get("cpf_cnpj");
+produtos = input.get("produtos");
+pagador = input.get("pagador");
+diasVencimento = input.get("dias_vencimento");
+
+// 2. DEFESA EM PROFUNDIDADE: SEGUNDA VALIDAÇÃO DE VALOR MÍNIMO
+if (valorTotal < 3.00) {
+    response.put("erro", "valor_minimo_nao_atingido");
+    response.put("mensagemAmigavel", "O valor mínimo de R$ 3,00 não foi atingido.");
+    return response;
+}
+
+// 3. BUSCA DAS CREDENCIAIS DIRETAMENTE NO MÓDULO DE CONFIGURAÇÃO (Sem expor no widget)
+configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
+if (configList.get("data").size() == 0) {
+    response.put("erro", "plugin_nao_configurado");
+    response.put("mensagemAmigavel", "A extensão PagHiper não foi configurada pelo administrador.");
+    return response;
+}
+
+configRecord = configList.get("data").get(0);
+apiKey = configRecord.get("apiKeyPagHiper");
+token = configRecord.get("tokenPagHiper");
+ambiente = configRecord.get("ambientePagHiper"); 
+
+// Definição do Endpoint (Suporte dinâmico a Sandbox e Produção)
+endpoint = "https://api.paghiper.com/transaction/create/";
+if (ambiente == "Sandbox") {
+    endpoint = "https://sandbox.paghiper.com/transaction/create/";
+}
+
+// 4. MONTAR E ARREDONDAR OS ITENS DO CATALOGO
+itensPayload = List();
+for each produto in produtos {
+    item = Map();
+    item.put("description", produto.get("nome"));
+    item.put("quantity", 1);
+    item.put("item_id", produto.get("id"));
+    // Evita imprecisão de float convertendo de forma segura para centavos inteiros
+    precoCents = (produto.get("preco") * 100).round(0);
+    item.put("price_cents", precoCents);
+    itensPayload.add(item);
+}
+
+// 5. ESTRUTURAR O PAYLOAD COMPLETO PARA A PAGHIPER
+payloadPagHiper = Map();
+payloadPagHiper.put("apiKey", apiKey);
+payloadPagHiper.put("token", token);
+payloadPagHiper.put("payer_name", pagador.get("nome"));
+payloadPagHiper.put("payer_email", pagador.get("email"));
+payloadPagHiper.put("payer_cpf_cnpj", cpfCnpj);
+payloadPagHiper.put("payer_phone", pagador.get("telefone"));
+payloadPagHiper.put("days_due_date", diasVencimento);
+payloadPagHiper.put("items", itensPayload);
+
+// Adiciona o endereço de forma estruturada e resiliente
+endereco = pagador.get("endereco");
+if (endereco != null) {
+    payloadPagHiper.put("payer_street", endereco.get("rua"));
+    payloadPagHiper.put("payer_number", endereco.get("numero"));
+    payloadPagHiper.put("payer_district", endereco.get("bairro"));
+    payloadPagHiper.put("payer_city", endereco.get("cidade"));
+    payloadPagHiper.put("payer_zip_code", endereco.get("cep"));
+}
+
+// 6. ENVIAR REQUISIÇÃO POST PARA O GATEWAY
+try {
+    respostaApi = invokeurl [
+        url: endpoint
+        type: POST
+        parameters: payloadPagHiper.toString()
+        headers: {"Content-Type": "application/json;charset=UTF-8"}
+    ];
+    
+    respostaMap = respostaApi.toMap();
+    
+    // 7. PARSER RESILIENTE DA RESPOSTA DA PAGHIPER
+    if (respostaMap.containsKey("response_errors")) {
+        erroObj = respostaMap.get("response_errors");
+        response.put("erro", "recusa_gateway");
+        response.put("mensagemAmigavel", "A PagHiper rejeitou a transação: " + erroObj.get("message"));
+    } else if (respostaMap.containsKey("transaction_receipt")) {
+        receipt = respostaMap.get("transaction_receipt");
+        response.put("status", receipt.get("status"));
+        response.put("transaction_id", receipt.get("transaction_id"));
+        response.put("url_slip", receipt.get("url_slip"));
+        response.put("digitable_line", receipt.get("digitable_line"));
+        response.put("valor_total", valorTotal);
+    } else {
+        response.put("erro", "resposta_invalida");
+        response.put("mensagemAmigavel", "Retorno inválido do gateway de pagamento.");
+    }
+} catch (e) {
+    response.put("erro", "falha_comunicacao");
+    response.put("mensagemAmigavel", "Falha de conexão com os servidores da PagHiper.");
+    response.put("detalhe_tecnico", e.toString());
+}
+
+return response;

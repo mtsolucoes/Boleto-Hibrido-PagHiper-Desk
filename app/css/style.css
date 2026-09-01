@@ -1,0 +1,95 @@
+/* NAVEGAÇÃO POR ABAS */
+.tab-header {
+  display: flex;
+  width: 100%;
+  border-bottom: 2px solid #e1e1e1;
+  margin-bottom: 15px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  color: #2f80ed;
+  border-bottom: 3px solid #2f80ed;
+}
+.tab-content {
+  display: none;
+  width: 100%;
+}
+.tab-content.active {
+  display: block;
+}
+
+/* CAIXA DE STATUS DO CONTRATO */
+.status-contrato-box {
+  background-color: #f0f4f9;
+  border: 1px solid #d2e3fc;
+  border-radius: 6px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+}
+.status-contrato-box.active-contract {
+  background-color: #e6f4ea;
+  border-color: #ceead6;
+}
+.status-contrato-title {
+  font-size: 12px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+}
+.status-contrato-desc {
+  font-size: 11px;
+  margin: 0;
+  color: #555;
+}
+
+/* LISTA DE TIME ENTRIES */
+.lista-horas {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fcfcfc;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 5px;
+}
+.hora-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+.hora-item:last-child {
+  border-bottom: none;
+}
+.hora-info {
+  display: flex;
+  flex-direction: column;
+}
+.hora-owner {
+  font-size: 12px;
+  font-weight: bold;
+}
+.hora-spent {
+  font-size: 11px;
+  color: #777;
+}
+.hora-cost {
+  font-size: 12px;
+  color: #000;
+}
+.unified-footer {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+  margin-top: 15px;
+}

@@ -1,73 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-	<meta charset="UTF-8">
-	<title>Boletos PagHiper</title>
-	<!--
-		IMPORTANTE: o "src" abaixo é o SDK padrão de widgets do Desk gerado pelo
-		zet init. Confira no seu próprio projeto (dentro de app/) qual script o
-		zet já referenciou por padrão e mantenha esse mesmo caminho aqui.
-	-->
-	<script src="https://js.zohostatic.com/desk/DeskAppClient.js"></script>
-	<style>
-		body { font-family: -apple-system, Arial, sans-serif; padding: 14px; margin:0; }
-		button {
-			display:block; width:100%; margin-bottom:8px; padding:10px;
-			border:1px solid #ccc; border-radius:6px; cursor:pointer;
-			background:#f7f7f7; font-size: 14px;
-		}
-		button:hover { background:#eee; }
-		#status { margin-top:10px; font-size: 13px; color:#333; min-height: 18px; }
-	</style>
+  <meta charset="UTF-8">
+  <title>Boletos PagHiper</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="text/javascript" src="https://js.zohostatic.com/support/developer_sdk/v1/zoho_desk_developers_sdk.utf8.js"></script>
 </head>
 <body>
-	<button id="btnGerar">Gerar Boleto</button>
-	<button id="btnConsultar">Consultar Status</button>
-	<button id="btnCancelar">Cancelar Boleto</button>
-	<div id="status"></div>
 
-<script>
-var ticketId = null;
+  <!-- Tela de Carregamento Técnico -->
+  <div id="loader-screen" class="widget-container">
+    <div class="spinner"></div>
+    <p id="status-loader" class="status-text">Validando ambiente técnico...</p>
+  </div>
 
-// Inicializa o SDK e captura o ID do ticket atual.
-// O nome do objeto global (ZOHODESK / ZFAPPS) e do método de leitura do
-// ticket.id pode variar conforme a versão do SDK gerada pelo seu zet init.
-// Confirme os nomes exatos olhando o arquivo de exemplo que o próprio
-// "zet init" já criou dentro da pasta app/ do seu projeto.
-ZOHODESK.extension.onload().then(function (App) {
-	ZOHODESK.get("ticket.id").then(function (data) {
-		ticketId = data["ticket.id"];
-	});
-});
+  <!-- Tela Principal do Plugin (Navegação por Abas) -->
+  <div id="main-app-container" class="widget-container" style="display: none;">
+    
+    <!-- Navegação de Abas -->
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="switchTab('modelo-b')">Modelo B (Produtos)</button>
+      <button class="tab-btn" onclick="switchTab('modelo-c')">Modelo C (Horas)</button>
+    </div>
 
-function setStatus(msg) {
-	document.getElementById("status").innerText = msg;
-}
+    <div id="banner-erro-config" class="banner-erro" style="display:none;"></div>
 
-function chamarFuncao(nomeFuncao) {
-	if (!ticketId) {
-		setStatus("Aguardando carregar o ticket...");
-		return;
-	}
-	setStatus("Processando...");
+    <!-- Conteúdo: Modelo B (Produtos) -->
+    <div id="tab-modelo-b" class="tab-content active">
+      <div id="tela-gerar-boleto" class="container-boleto">
+        <h3>Composição por Produtos</h3>
+        <div id="lista-produtos" class="lista-produtos">
+          <p class="carregando">Carregando catálogo do Desk...</p>
+        </div>
+      </div>
+    </div>
 
-	// A chamada abaixo é o ponto que precisa ser confirmado/ajustado.
-	// Ao criar cada função em Sigma > Functions, clique em "Invoke as REST API"
-	// no editor da função: a Zoho vai te dar um snippet pronto (URL + parâmetros
-	// de execução) equivalente a este ZOHODESK.invoke. Copie esse snippet oficial
-	// e substitua a linha abaixo por ele, mantendo o "ticketId" como parâmetro.
-	ZOHODESK.invoke(nomeFuncao, { ticketId: ticketId })
-		.then(function (response) {
-			setStatus(response.message || "Concluído.");
-		})
-		.catch(function (err) {
-			setStatus("Erro: " + JSON.stringify(err));
-		});
-}
+    <!-- Conteúdo: Modelo C (Time Entry + Contratos) -->
+    <div id="tab-modelo-c" class="tab-content">
+      <div id="tela-gerar-boleto-horas" class="container-boleto">
+        <h3>Faturamento por Tempo</h3>
+        
+        <!-- Bloco de Status do Contrato Ativo -->
+        <div id="status-contrato-container" class="status-contrato-box">
+          <p class="carregando">Consultando contratos do cliente...</p>
+        </div>
 
-document.getElementById("btnGerar").onclick = function () { chamarFuncao("Gerar_Boleto_Desk"); };
-document.getElementById("btnConsultar").onclick = function () { chamarFuncao("Consultar_Boleto_Desk"); };
-document.getElementById("btnCancelar").onclick = function () { chamarFuncao("Cancelar_Boleto_Desk"); };
-</script>
+        <!-- Lista de Lançamentos de Tempo faturáveis -->
+        <div class="campo-form">
+          <label>Lançamentos de Tempo Disponíveis (Billable):</label>
+          <div id="lista-time-entries" class="lista-horas">
+            <p class="carregando">Buscando Time Entries...</p>
+          </div>
+        </div>
+
+        <!-- Opção de Tarifa Customizada (renderizada se modeloCTarifaPropria for true) -->
+        <div id="form-tarifa-custom" class="campo-form" style="display: none;">
+          <label for="input-tarifa-custom">Tarifa por Hora (R$)</label>
+          <input type="number" id="input-tarifa-custom" placeholder="Ex: 150.00" step="0.01" min="0.00" value="0.00" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloco Unificado de Dados do Boleto (Válido para ambas as Abas) -->
+    <div class="container-boleto unified-footer">
+      
+      <div class="resumo-valor">
+        <span>Total a Cobrar:</span>
+        <strong id="valor-total-selecionado">R$ 0,00</strong>
+      </div>
+
+      <div id="alerta-valor-minimo" class="alerta-aviso" style="display:none;">
+        O valor mínimo para emissão de boleto é R$ 3,00
+      </div>
+
+      <div class="campo-form">
+        <label for="input-cpf-cnpj">CPF/CNPJ do pagador</label>
+        <input type="text" id="input-cpf-cnpj" placeholder="Somente números ou formatado" maxlength="18" />
+        <span id="erro-cpf-cnpj" class="erro-campo" style="display:none;"></span>
+      </div>
+
+      <button id="btn-gerar-boleto" class="btn-primario" disabled onclick="tratarCliqueGerarBoleto()">
+        Emitir Boleto PagHiper
+      </button>
+
+      <div id="status-emissao" class="status-emissao" style="display:none;"></div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script type="text/javascript" src="js/products.js"></script>
+  <script type="text/javascript" src="js/contracts.js"></script>
+  <script type="text/javascript" src="js/paghiper.js"></script>
+  <script type="text/javascript" src="js/extension.js"></script>
+
+  <!-- Lógica de controle de Abas -->
+  <script>
+    let activeTab = "modelo-b";
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+
+      if (tabId === "modelo-c") {
+        initModeloCScreen(); // Inicializa lógica de contratos e horas
+      } else {
+        recalcularValorEEstado(); // Reseta para cálculo de produtos
+      }
+    }
+  </script>
 </body>
 </html>

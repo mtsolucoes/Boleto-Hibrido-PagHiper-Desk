@@ -1,0 +1,12 @@
+{
+  "files": [
+    "app/widget.html",
+    "app/css/style.css",
+    "app/js/extension.js",
+    "app/js/products.js",
+    "app/js/contracts.js",
+    "app/js/paghiper.js",
+    "app/translations/en.json",
+    "app/translations/pt.json"
+  ]
+}
