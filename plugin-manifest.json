@@ -1,16 +1,8 @@
 {
-  "locale": [
-    "en",
-    "pt"
-  ],
+  "locale": ["en"],
   "service": "DESK",
-  "storage": true,
-  "whiteListedDomains": [
-    "https://api.paghiper.com",
-    "https://sandbox.paghiper.com",
-    "https://viacep.com.br",
-    "https://desk.zoho.com"
-  ],
+  "storage": false,
+  "whiteListedDomains": ["https://desk.zoho.com"],
   "modules": {
     "widgets": [
       {
@@ -23,92 +15,9 @@
     ]
   },
   "cspDomains": {
-    "connect-src": [
-      "https://api.paghiper.com",
-      "https://sandbox.paghiper.com",
-      "https://viacep.com.br",
-      "https://desk.zoho.com"
-    ]
+    "connect-src": ["https://desk.zoho.com"]
   },
   "connectors": [],
-  "config": [
-    {
-      "name": "apiKey",
-      "displayName": "PagHiper API Key",
-      "mandatory": true,
-      "secure": true,
-      "type": "text",
-      "userdefined": true,
-      "authType": "org",
-      "description": "Chave apk_ obtida em paghiper.com/painel/credenciais"
-    },
-    {
-      "name": "token",
-      "displayName": "PagHiper Token",
-      "mandatory": true,
-      "secure": true,
-      "type": "text",
-      "userdefined": true,
-      "authType": "org",
-      "description": "Token obtido em paghiper.com/painel/credenciais"
-    },
-    {
-      "name": "diasVencimento",
-      "displayName": "Dias para vencimento do boleto",
-      "mandatory": false,
-      "secure": false,
-      "type": "text",
-      "userdefined": true,
-      "authType": "org",
-      "default": "5"
-    },
-    {
-      "name": "multa",
-      "displayName": "Percentual de multa por atraso (1 ou 2)",
-      "mandatory": false,
-      "secure": false,
-      "type": "text"
-      ,"userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "juros",
-      "displayName": "Aplicar 1% de juros ao mês por atraso?",
-      "mandatory": false,
-      "secure": false,
-      "type": "checkbox",
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "ambientePagHiper",
-      "displayName": "Ambiente PagHiper",
-      "mandatory": true,
-      "secure": false,
-      "type": "picklist",
-      "userdefined": true,
-      "authType": "org",
-      "options": [
-        {
-          "displayValue": "Sandbox",
-          "value": "Sandbox"
-        },
-        {
-          "displayValue": "Produção",
-          "value": "Produção"
-        }
-      ],
-      "default": "Sandbox"
-    },
-    {
-      "name": "modeloBAutoSelecionar",
-      "displayName": "Selecionar automaticamente produtos vinculados ao ticket?",
-      "mandatory": false,
-      "secure": false,
-      "type": "checkbox",
-      "default": false,
-      "userdefined": true,
-      "authType": "org"
-    }
-  ]
+  "config": [],
+  "moduleSupport": false
 }

@@ -7,6 +7,13 @@
 
 const VALOR_MINIMO_BOLETO = 3.00;
 let PRODUTOS_CACHE = [];
+
+function recalcularValorEEstado() {
+  if (typeof recalcularValorEEstadoProdutos === "function") {
+    recalcularValorEEstadoProdutos();
+  }
+}
+
 async function inicializarTelaProdutos() {
   try {
     CONFIG_EXTENSAO = await inicializarModuloConfiguracao(); // vem do extension.js
@@ -103,8 +110,14 @@ function renderizarListaProdutos(produtos, produtoAutoSelecionadoId) {
 }
 
 function configurarListenersFormulario() {
-  document.getElementById("input-cpf-cnpj").addEventListener("input", recalcularValorEEstado);
-  document.getElementById("btn-gerar-boleto").addEventListener("click", tratarCliqueGerarBoleto);
+  const cpfCnpjInput = document.getElementById("input-cpf-cnpj");
+  const gerarBoletoButton = document.getElementById("btn-gerar-boleto");
+
+  cpfCnpjInput.removeEventListener("input", recalcularValorEEstado);
+  cpfCnpjInput.addEventListener("input", recalcularValorEEstado);
+
+  gerarBoletoButton.removeEventListener("click", tratarCliqueGerarBoleto);
+  gerarBoletoButton.addEventListener("click", tratarCliqueGerarBoleto);
 }
 
 /**

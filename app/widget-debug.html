@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Boletos PagHiper</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #172b4d;
+      background: #ffffff;
+    }
+
+    .wrap {
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 8px 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    code {
+      display: block;
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #d8dde6;
+      border-radius: 4px;
+      background: #f7f9fb;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+    }
+
+    .ok {
+      color: #16794c;
+      font-weight: 700;
+    }
+
+    .warn {
+      color: #9a5b00;
+      font-weight: 700;
+    }
+  </style>
+  <script src="https://js.zohostatic.com/support/developer_sdk/v1/js/ZohoDeskClientSDK.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Boletos PagHiper</h1>
+    <p id="status" class="warn">HTML carregou. Aguardando SDK do Zoho Desk...</p>
+    <code id="details">Sem dados ainda.</code>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const detailsEl = document.getElementById("details");
+
+    function show(status, details, ok) {
+      statusEl.textContent = status;
+      statusEl.className = ok ? "ok" : "warn";
+      detailsEl.textContent = details;
+    }
+
+    if (!window.ZOHODESK) {
+      show("SDK do Zoho Desk nao carregou.", "window.ZOHODESK esta ausente.", false);
+    } else {
+      show("SDK carregou. Aguardando extension.onload().", "window.ZOHODESK existe.", false);
+
+      ZOHODESK.extension.onload().then(function (App) {
+        show(
+          "Extensao carregada com sucesso.",
+          JSON.stringify({
+            model: App && App.model ? App.model : null,
+            location: window.location.href
+          }, null, 2),
+          true
+        );
+      }).catch(function (error) {
+        show(
+          "Falha no extension.onload().",
+          error && (error.message || JSON.stringify(error)) || "Erro desconhecido.",
+          false
+        );
+      });
+    }
+  </script>
+</body>
+</html>

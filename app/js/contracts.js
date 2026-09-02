@@ -164,12 +164,6 @@ function toggleTimeEntrySelection(entryId) {
   } else {
     selectedTimeEntryIds.add(entryId);
   }
-
-  function recalcularValorEEstado() {
-    if (typeof recalcularValorEEstadoProdutos === "function") {
-      recalcularValorEEstadoProdutos();
-    }
-  }
   recalcularValorEEstado();
 }
 

@@ -39,10 +39,54 @@ let activeTicketId = null;
 let CONFIG_EXTENSAO = null;
 
 ZOHODESK.extension.onload().then(async function (App) {
-  activeTicketId = App.model.id;
-  portalOrgId = App.model.orgId;
-  await inicializarTudo();
+  try {
+    await resolverContextoDesk(App);
+    await inicializarTudoBasico();
+  } catch (error) {
+    console.error("[PagHiper] Falha ao obter contexto do Desk:", error);
+    updateUIStatus("status-loader", "Falha ao obter contexto do ticket/portal.");
+  }
 });
+
+async function resolverContextoDesk(App) {
+  activeTicketId = App?.model?.id || await getSdkValue("ticket.id");
+
+  const portal = await getSdkValue("portal").catch(() => null);
+  portalOrgId = App?.model?.orgId ||
+    portal?.orgId ||
+    portal?.id ||
+    portal?.zid ||
+    new URLSearchParams(window.location.search).get("_iam_zid");
+
+  if (!activeTicketId) {
+    throw new Error("ticket.id indisponivel no SDK.");
+  }
+
+  if (!portalOrgId) {
+    throw new Error("orgId indisponivel no SDK.");
+  }
+}
+
+async function getSdkValue(key) {
+  const response = await ZOHODESK.get(key);
+  if (response && typeof response === "object" && key in response) {
+    return response[key];
+  }
+  return response;
+}
+
+async function inicializarTudoBasico() {
+  updateUIStatus("status-loader", "Carregando widget...");
+  CONFIG_EXTENSAO = {
+    diasVencimento: 5,
+    multa: 0,
+    juros: false,
+    ambientePagHiper: "Sandbox",
+    modeloCTarifaPropria: false,
+    modeloBAutoSelecionar: false
+  };
+  loadWidgetMainScreen();
+}
 
 async function inicializarTudo() {
   try {
