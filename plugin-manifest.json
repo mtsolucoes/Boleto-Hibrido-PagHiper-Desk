@@ -34,7 +34,15 @@
       "Desk.contacts.READ",
       "Desk.contacts.UPDATE",
       "Desk.products.READ",
-      "Desk.contracts.READ"
+      "Desk.contracts.READ",
+      "Desk.accounts.READ",
+      "Desk.accounts.UPDATE",
+      "Desk.modules.CREATE",
+      "Desk.modules.READ",
+      "Desk.modules.UPDATE",
+      "Desk.fields.CREATE",
+      "Desk.fields.READ",
+      "Desk.fields.UPDATE"
     ]
   },
   "connectors": [],
@@ -84,6 +92,27 @@
       "mandatory": false,
       "secure": false,
       "type": "checkbox",
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "ambientePagHiper",
+      "displayName": "Ambiente PagHiper",
+      "mandatory": true,
+      "secure": false,
+      "type": "picklist",
+      "options": ["Sandbox", "Produção"],
+      "default": "Sandbox",
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "modeloBAutoSelecionar",
+      "displayName": "Selecionar automaticamente produtos vinculados ao ticket?",
+      "mandatory": false,
+      "secure": false,
+      "type": "checkbox",
+      "default": false,
       "userdefined": true,
       "authType": "org"
     }

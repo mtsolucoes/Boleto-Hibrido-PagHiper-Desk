@@ -1,0 +1,54 @@
+response = Map();
+transactionId = input.get("transaction_id");
+if (transactionId == null || transactionId == "") {
+    response.put("erro", "boleto_id_obrigatorio");
+    response.put("mensagemAmigavel", "Informe o Boleto ID antes de consultar.");
+    return response;
+}
+configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
+if (configList.get("data").size() == 0) {
+    response.put("erro", "plugin_nao_configurado");
+    response.put("mensagemAmigavel", "A extensão não foi configurada.");
+    return response;
+}
+config = configList.get("data").get(0);
+apiKey = config.get("apiKey");
+token = config.get("token");
+ambiente = config.get("ambientePagHiper");
+if (apiKey == null) {
+    apiKey = config.get("cf_apiKey");
+}
+if (token == null) {
+    token = config.get("cf_token");
+}
+if (ambiente == null) {
+    ambiente = config.get("cf_ambientePagHiper");
+}
+endpoint = "https://api.paghiper.com/transaction/status/";
+if (ambiente == "Sandbox") {
+    endpoint = "https://sandbox.paghiper.com/transaction/status/";
+}
+payload = Map();
+payload.put("apiKey", apiKey);
+payload.put("token", token);
+payload.put("transaction_id", transactionId);
+try {
+    apiResponse = invokeurl [
+        url: endpoint
+        type: POST
+        parameters: payload.toString()
+        headers: {"Content-Type":"application/json;charset=UTF-8"}
+    ];
+    result = apiResponse.toMap();
+    receipt = result.get("transaction_receipt");
+    if (receipt != null) {
+        response.put("status", receipt.get("status"));
+    } else {
+        response.put("erro", "resposta_invalida");
+        response.put("mensagemAmigavel", "A PagHiper não retornou o status do boleto.");
+    }
+} catch (e) {
+    response.put("erro", "falha_comunicacao");
+    response.put("mensagemAmigavel", "Falha de conexão com a PagHiper.");
+}
+return response;

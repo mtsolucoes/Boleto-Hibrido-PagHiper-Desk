@@ -93,3 +93,24 @@
   padding-top: 15px;
   margin-top: 15px;
 }
+
+.acoes-boleto {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-secundario,
+.btn-perigo {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-perigo {
+  color: #fff;
+  background: #c62828;
+  border-color: #c62828;
+}

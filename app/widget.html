@@ -79,9 +79,13 @@
         <span id="erro-cpf-cnpj" class="erro-campo" style="display:none;"></span>
       </div>
 
-      <button id="btn-gerar-boleto" class="btn-primario" disabled onclick="tratarCliqueGerarBoleto()">
+      <button id="btn-gerar-boleto" class="btn-primario" disabled>
         Emitir Boleto PagHiper
       </button>
+      <div class="acoes-boleto">
+        <button id="btn-consultar-boleto" class="btn-secundario" onclick="consultarBoleto()">Consultar boleto</button>
+        <button id="btn-cancelar-boleto" class="btn-perigo" onclick="cancelarBoleto()">Cancelar boleto</button>
+      </div>
 
       <div id="status-emissao" class="status-emissao" style="display:none;"></div>
     </div>

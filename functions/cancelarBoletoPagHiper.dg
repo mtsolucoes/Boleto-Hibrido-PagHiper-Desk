@@ -1,0 +1,55 @@
+response = Map();
+transactionId = input.get("transaction_id");
+motivo = input.get("motivo");
+if (transactionId == null || transactionId == "" || motivo == null || motivo == "") {
+    response.put("erro", "dados_cancelamento_obrigatorios");
+    response.put("mensagemAmigavel", "Boleto ID e motivo do cancelamento são obrigatórios.");
+    return response;
+}
+configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
+if (configList.get("data").size() == 0) {
+    response.put("erro", "plugin_nao_configurado");
+    response.put("mensagemAmigavel", "A extensão não foi configurada.");
+    return response;
+}
+config = configList.get("data").get(0);
+apiKey = config.get("apiKey");
+token = config.get("token");
+ambiente = config.get("ambientePagHiper");
+if (apiKey == null) {
+    apiKey = config.get("cf_apiKey");
+}
+if (token == null) {
+    token = config.get("cf_token");
+}
+if (ambiente == null) {
+    ambiente = config.get("cf_ambientePagHiper");
+}
+endpoint = "https://api.paghiper.com/transaction/cancel/";
+if (ambiente == "Sandbox") {
+    endpoint = "https://sandbox.paghiper.com/transaction/cancel/";
+}
+payload = Map();
+payload.put("apiKey", apiKey);
+payload.put("token", token);
+payload.put("transaction_id", transactionId);
+payload.put("reason", motivo);
+try {
+    apiResponse = invokeurl [
+        url: endpoint
+        type: POST
+        parameters: payload.toString()
+        headers: {"Content-Type":"application/json;charset=UTF-8"}
+    ];
+    result = apiResponse.toMap();
+    if (result.containsKey("response_errors")) {
+        response.put("erro", "recusa_gateway");
+        response.put("mensagemAmigavel", "A PagHiper recusou o cancelamento.");
+    } else {
+        response.put("status", "canceled");
+    }
+} catch (e) {
+    response.put("erro", "falha_comunicacao");
+    response.put("mensagemAmigavel", "Falha de conexão com a PagHiper.");
+}
+return response;

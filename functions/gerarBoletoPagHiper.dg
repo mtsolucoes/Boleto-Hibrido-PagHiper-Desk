@@ -28,9 +28,18 @@ if (configList.get("data").size() == 0) {
 }
 
 configRecord = configList.get("data").get(0);
-apiKey = configRecord.get("apiKeyPagHiper");
-token = configRecord.get("tokenPagHiper");
-ambiente = configRecord.get("ambientePagHiper"); 
+apiKey = configRecord.get("apiKey");
+token = configRecord.get("token");
+ambiente = configRecord.get("ambientePagHiper");
+if (apiKey == null) {
+    apiKey = configRecord.get("cf_apiKey");
+}
+if (token == null) {
+    token = configRecord.get("cf_token");
+}
+if (ambiente == null) {
+    ambiente = configRecord.get("cf_ambientePagHiper");
+}
 
 // Definição do Endpoint (Suporte dinâmico a Sandbox e Produção)
 endpoint = "https://api.paghiper.com/transaction/create/";

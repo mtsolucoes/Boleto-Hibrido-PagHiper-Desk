@@ -1,5 +1,12 @@
 {
-  "locale": "en",
-  "app.title": "PagHiper Payments"
+  "app.title": "PagHiper Payment",
+  "form.payment_type": "Payment Method",
+  "form.pix": "PIX",
+  "form.boleto": "Bank Slip (Boleto)",
+  "form.amount": "Amount",
+  "form.button_generate": "Generate Charge",
+  "status.processing": "Processing request...",
+  "status.invalid_amount": "Please enter a valid amount.",
+  "status.success": "Charge generated successfully!",
+  "status.error": "Error processing request."
 }
-

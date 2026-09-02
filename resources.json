@@ -1,7 +1,12 @@
 {
-  "files": [
+  "fields": [
+    "functions/gerarBoletoPagHiper.dg",
+    "functions/consultarBoletoPagHiper.dg",
+    "functions/cancelarBoletoPagHiper.dg",
     "app/widget.html",
     "app/css/style.css",
+    "app/img/icon.png",
+    "app/img/logo.png",
     "app/js/extension.js",
     "app/js/products.js",
     "app/js/contracts.js",

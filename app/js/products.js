@@ -7,8 +7,6 @@
 
 const VALOR_MINIMO_BOLETO = 3.00;
 let PRODUTOS_CACHE = [];
-let CONFIG_EXTENSAO = null;
-
 async function inicializarTelaProdutos() {
   try {
     CONFIG_EXTENSAO = await inicializarModuloConfiguracao(); // vem do extension.js
@@ -205,7 +203,3 @@ function exibirStatus(tipo, mensagem) {
   el.textContent = mensagem;
   el.style.display = "block";
 }
-
-ZOHODESK.extension.onload().then(() => {
-  inicializarTelaProdutos();
-});

@@ -3,7 +3,7 @@ let path = require('path');
 let projectRootDir = process.cwd();
 let sourceFolder = 'src';
 let outputFolder = 'app';
-let outputFileName = 'extension.js';
+let outputFileName = 'bundle.js';
 
 module.exports = (mode = 'production') => ({
   entry: path.join(projectRootDir, sourceFolder, 'index.js'),
