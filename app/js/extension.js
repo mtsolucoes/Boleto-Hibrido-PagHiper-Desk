@@ -2,6 +2,16 @@ const CONFIG_MODULE_API_NAME = "configuracaoExtensaoPagHiper";
 const CONFIG_MODULE_LABEL = "Configuração da Extensão";
 
 const SCHEMA_GERAL_PROVISIONAMENTO = {
+  configuracaoExtensaoPagHiper: [
+    { displayLabel: "PagHiper API Key", type: "Text", apiName: "cf_apiKey", maxLength: 255, isEncryptedField: true },
+    { displayLabel: "PagHiper Token", type: "Text", apiName: "cf_token", maxLength: 255, isEncryptedField: true },
+    { displayLabel: "Dias para vencimento", type: "Number", apiName: "cf_diasVencimento" },
+    { displayLabel: "Percentual de multa", type: "Decimal", apiName: "cf_multa" },
+    { displayLabel: "Aplicar juros", type: "Checkbox", apiName: "cf_juros" },
+    { displayLabel: "Ambiente PagHiper", type: "Text", apiName: "cf_ambientePagHiper", maxLength: 30 },
+    { displayLabel: "Usar tarifa própria no Modelo C", type: "Checkbox", apiName: "cf_modeloCTarifaPropria" },
+    { displayLabel: "Selecionar produtos automaticamente", type: "Checkbox", apiName: "cf_modeloBAutoSelecionar" }
+  ],
   tickets: [
     { displayLabel: "Boleto ID", type: "Text", apiName: "cf_boleto_id", maxLength: 100 },
     { displayLabel: "Status do Boleto", type: "Text", apiName: "cf_status_boleto", maxLength: 100 },
@@ -19,7 +29,9 @@ const SCHEMA_GERAL_PROVISIONAMENTO = {
     { displayLabel: "Número", type: "Text", apiName: "cf_numero_endereco", maxLength: 20 },
     { displayLabel: "Bairro", type: "Text", apiName: "cf_bairro_endereco", maxLength: 100 }
   ],
-  timeEntry: []
+  timeEntry: [
+    { displayLabel: "Referência da Cobrança", type: "Text", apiName: "cf_referencia_cobranca", maxLength: 150 }
+  ]
 };
 
 let portalOrgId = null;
@@ -84,7 +96,17 @@ async function inicializarModuloConfiguracao() {
     headers: { orgId: portalOrgId }
   });
   const parsedRecords = typeof records === "string" ? JSON.parse(records) : records;
-  return parsedRecords?.data?.[0]?.cf || parsedRecords?.data?.[0] || {};
+  const record = parsedRecords?.data?.[0] || {};
+  const config = { ...record, ...(record.cf || {}) };
+  return {
+    ...config,
+    diasVencimento: config.diasVencimento ?? config.cf_diasVencimento,
+    multa: config.multa ?? config.cf_multa,
+    juros: config.juros ?? config.cf_juros,
+    ambientePagHiper: config.ambientePagHiper ?? config.cf_ambientePagHiper,
+    modeloCTarifaPropria: config.modeloCTarifaPropria ?? config.cf_modeloCTarifaPropria,
+    modeloBAutoSelecionar: config.modeloBAutoSelecionar ?? config.cf_modeloBAutoSelecionar
+  };
 }
 
 async function findMissingFields(moduleName) {
@@ -118,7 +140,7 @@ async function createFieldInZoho(moduleName, fieldConfig) {
     displayLabel: fieldConfig.displayLabel,
     apiName: fieldConfig.apiName,
     type: fieldConfig.type,
-    isEncryptedField: false,
+    isEncryptedField: fieldConfig.isEncryptedField === true,
     isPHI: false,
     isTrackLastActivityTime: false,
     isMandatory: false

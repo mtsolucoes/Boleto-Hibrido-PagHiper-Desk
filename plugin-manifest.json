@@ -22,27 +22,12 @@
       }
     ]
   },
-  "zohoAuthorisation": {
-    "type": "connectors",
-    "connectionLinkName": "zohodesk_conn",
-    "connectionName": "zohodesk_conn",
-    "serviceName": "zlabs_integration",
-    "userAccess": true,
-    "isUserDefinedService": false,
-    "scope": [
-      "Desk.tickets.ALL",
-      "Desk.contacts.READ",
-      "Desk.contacts.UPDATE",
-      "Desk.products.READ",
-      "Desk.contracts.READ",
-      "Desk.accounts.READ",
-      "Desk.accounts.UPDATE",
-      "Desk.modules.CREATE",
-      "Desk.modules.READ",
-      "Desk.modules.UPDATE",
-      "Desk.fields.CREATE",
-      "Desk.fields.READ",
-      "Desk.fields.UPDATE"
+  "cspDomains": {
+    "connect-src": [
+      "https://api.paghiper.com",
+      "https://sandbox.paghiper.com",
+      "https://viacep.com.br",
+      "https://desk.zoho.com"
     ]
   },
   "connectors": [],
@@ -82,8 +67,8 @@
       "displayName": "Percentual de multa por atraso (1 ou 2)",
       "mandatory": false,
       "secure": false,
-      "type": "text",
-      "userdefined": true,
+      "type": "text"
+      ,"userdefined": true,
       "authType": "org"
     },
     {
@@ -101,10 +86,19 @@
       "mandatory": true,
       "secure": false,
       "type": "picklist",
-      "options": ["Sandbox", "Produção"],
-      "default": "Sandbox",
       "userdefined": true,
-      "authType": "org"
+      "authType": "org",
+      "options": [
+        {
+          "displayValue": "Sandbox",
+          "value": "Sandbox"
+        },
+        {
+          "displayValue": "Produção",
+          "value": "Produção"
+        }
+      ],
+      "default": "Sandbox"
     },
     {
       "name": "modeloBAutoSelecionar",

@@ -15,7 +15,8 @@ async function inicializarTelaProdutos() {
     PRODUTOS_CACHE = produtos;
 
     let produtoAutoSelecionadoId = null;
-    if (CONFIG_EXTENSAO?.modeloBAutoSelecionar === true) {
+    if (CONFIG_EXTENSAO?.modeloBAutoSelecionar === true ||
+        CONFIG_EXTENSAO?.modeloBAutoSelecionar === "true") {
       produtoAutoSelecionadoId = await buscarProdutoVinculadoAoTicket();
     }
 
@@ -110,10 +111,13 @@ function configurarListenersFormulario() {
  * Recalcula valor total, valida CPF/CNPJ e valor mínimo,
  * e habilita/desabilita o botão de emissão de acordo.
  */
-function recalcularValorEEstado() {
+function recalcularValorEEstadoProdutos() {
   const checkboxesMarcados = document.querySelectorAll(".checkbox-produto:checked");
   let total = 0;
   checkboxesMarcados.forEach(cb => total += parseFloat(cb.dataset.preco || 0));
+  if (typeof obterTimeEntriesSelecionados === "function") {
+    total += obterTimeEntriesSelecionados().reduce((sum, entry) => sum + entry.cost, 0);
+  }
 
   document.getElementById("valor-total-selecionado").textContent =
     `R$ ${total.toFixed(2).replace(".", ",")}`;
@@ -126,7 +130,9 @@ function recalcularValorEEstado() {
   atualizarFeedbackCpfCnpj(cpfCnpjValido);
 
   const btn = document.getElementById("btn-gerar-boleto");
-  btn.disabled = abaixoDoMinimo || !cpfCnpjValido || checkboxesMarcados.length === 0;
+  const hasTimeEntries = typeof selectedTimeEntryIds !== "undefined" && selectedTimeEntryIds.size > 0;
+  btn.disabled = abaixoDoMinimo || !cpfCnpjValido ||
+    (checkboxesMarcados.length === 0 && !hasTimeEntries);
 }
 
 function atualizarFeedbackCpfCnpj(valido) {

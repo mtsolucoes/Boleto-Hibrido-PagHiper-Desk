@@ -11,6 +11,8 @@ cpfCnpj = input.get("cpf_cnpj");
 produtos = input.get("produtos");
 pagador = input.get("pagador");
 diasVencimento = input.get("dias_vencimento");
+multa = input.get("multa");
+juros = input.get("juros");
 
 // 2. DEFESA EM PROFUNDIDADE: SEGUNDA VALIDAÇÃO DE VALOR MÍNIMO
 if (valorTotal < 3.00) {
@@ -59,6 +61,15 @@ for each produto in produtos {
     item.put("price_cents", precoCents);
     itensPayload.add(item);
 }
+timeEntries = input.get("time_entries");
+for each lancamento in timeEntries {
+    item = Map();
+    item.put("description", "Atendimento por tempo - " + lancamento.get("id"));
+    item.put("quantity", 1);
+    item.put("item_id", lancamento.get("id"));
+    item.put("price_cents", (lancamento.get("cost") * 100).round(0));
+    itensPayload.add(item);
+}
 
 // 5. ESTRUTURAR O PAYLOAD COMPLETO PARA A PAGHIPER
 payloadPagHiper = Map();
@@ -70,6 +81,12 @@ payloadPagHiper.put("payer_cpf_cnpj", cpfCnpj);
 payloadPagHiper.put("payer_phone", pagador.get("telefone"));
 payloadPagHiper.put("days_due_date", diasVencimento);
 payloadPagHiper.put("items", itensPayload);
+if (multa != null && multa > 0) {
+    payloadPagHiper.put("late_payment_fine", multa);
+}
+if (juros == true) {
+    payloadPagHiper.put("per_day_interest", 0.033);
+}
 
 // Adiciona o endereço de forma estruturada e resiliente
 endereco = pagador.get("endereco");

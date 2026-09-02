@@ -1,17 +1,73 @@
 {
   "fields": [
-    "functions/gerarBoletoPagHiper.dg",
-    "functions/consultarBoletoPagHiper.dg",
-    "functions/cancelarBoletoPagHiper.dg",
-    "app/widget.html",
-    "app/css/style.css",
-    "app/img/icon.png",
-    "app/img/logo.png",
-    "app/js/extension.js",
-    "app/js/products.js",
-    "app/js/contracts.js",
-    "app/js/paghiper.js",
-    "app/translations/en.json",
-    "app/translations/pt.json"
+    {
+      "resourceName": "paghiperApiKey",
+      "module": "tickets",
+      "displayLabel": "API Key PagHiper",
+      "type": "Text",
+      "maxLength": "255"
+    },
+    {
+      "resourceName": "paghiperToken",
+      "module": "tickets",
+      "displayLabel": "Token PagHiper",
+      "type": "Text",
+      "maxLength": "255"
+    },
+    {
+      "resourceName": "orderId",
+      "module": "tickets",
+      "displayLabel": "ID do Pedido",
+      "type": "Text",
+      "maxLength": "100"
+    },
+    {
+      "resourceName": "customerName",
+      "module": "tickets",
+      "displayLabel": "Nome do Cliente",
+      "type": "Text",
+      "maxLength": "150"
+    },
+    {
+      "resourceName": "customerCpfCnpj",
+      "module": "tickets",
+      "displayLabel": "CPF CNPJ",
+      "type": "Text",
+      "maxLength": "20"
+    },
+    {
+      "resourceName": "amount",
+      "module": "tickets",
+      "displayLabel": "Valor do Boleto",
+      "type": "Text",
+      "maxLength": "50"
+    },
+    {
+      "resourceName": "dueDate",
+      "module": "tickets",
+      "displayLabel": "Data de Vencimento",
+      "type": "Date"
+    },
+    {
+      "resourceName": "barcode",
+      "module": "tickets",
+      "displayLabel": "Linha Digitavel",
+      "type": "Text",
+      "maxLength": "150"
+    },
+    {
+      "resourceName": "boletoUrl",
+      "module": "tickets",
+      "displayLabel": "URL do Boleto",
+      "type": "Text",
+      "maxLength": "255"
+    },
+    {
+      "resourceName": "paymentStatus",
+      "module": "tickets",
+      "displayLabel": "Status do Pagamento",
+      "type": "Text",
+      "maxLength": "50"
+    }
   ]
 }

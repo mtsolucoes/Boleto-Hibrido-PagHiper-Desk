@@ -21,30 +21,41 @@ async function montarPayloadBoleto() {
     nome: cb.dataset.nome,
     preco: parseFloat(cb.dataset.preco)
   }));
-  const valorTotal = produtos.reduce((total, produto) => total + produto.preco, 0);
+  const timeEntries = typeof obterTimeEntriesSelecionados === "function"
+    ? obterTimeEntriesSelecionados()
+    : [];
+  const produtosTotal = produtos.reduce((total, produto) => total + produto.preco, 0);
+  const horasTotal = timeEntries.reduce((total, entry) => total + entry.cost, 0);
+  const valorTotal = produtosTotal + horasTotal;
   const cpfCnpj = document.getElementById("input-cpf-cnpj").value.replace(/\D/g, "");
   if (valorTotal < 3) throw new Error("O valor mínimo para emissão é R$ 3,00.");
   return {
     valor_total: Number(valorTotal.toFixed(2)),
     cpf_cnpj: cpfCnpj,
     produtos,
+    time_entries: timeEntries,
     pagador: await buscarDadosPagador(),
-    dias_vencimento: parseInt(CONFIG_EXTENSAO?.diasVencimento || CONFIG_EXTENSAO?.diasVencimentoPadrao || 5, 10)
+    dias_vencimento: parseInt(CONFIG_EXTENSAO?.diasVencimento || CONFIG_EXTENSAO?.diasVencimentoPadrao || 5, 10),
+    multa: Number(CONFIG_EXTENSAO?.multa || 0),
+    juros: Boolean(CONFIG_EXTENSAO?.juros === true || CONFIG_EXTENSAO?.juros === "true")
   };
 }
 
 async function buscarDadosPagador() {
   const contatoId = await ZOHODESK.get("ticket.contactId");
-  if (!contatoId) throw new Error("O ticket não possui um contato pagador.");
+  const accountId = await ZOHODESK.get("ticket.accountId");
+  if (!contatoId && !accountId) throw new Error("O ticket não possui contato ou conta pagadora.");
   const resposta = await ZOHODESK.request({
-    url: `https://desk.zoho.com/api/v1/contacts/${contatoId}`,
+    url: `https://desk.zoho.com/api/v1/${contatoId ? "contacts" : "accounts"}/${contatoId || accountId}`,
     type: "GET",
     headers: { orgId: portalOrgId }
   });
   const contato = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   const cpfCnpj = document.getElementById("input-cpf-cnpj").value.replace(/\D/g, "");
   return {
-    nome: `${contato.firstName || ""} ${contato.lastName || ""}`.trim(),
+    nome: contato.firstName || contato.lastName
+      ? `${contato.firstName || ""} ${contato.lastName || ""}`.trim()
+      : contato.accountName || contato.name || "",
     email: contato.email,
     telefone: contato.phone || contato.mobile || "",
     cpf_cnpj: cpfCnpj,
@@ -92,7 +103,51 @@ async function tratarRespostaSucesso(resultado) {
     contentType: "application/json",
     headers: { orgId: portalOrgId }
   });
+  await registrarReferenciasTimeEntries(resultado.transaction_id || "");
+  await adicionarComentarioInterno(
+    ticketId,
+    `Boleto PagHiper emitido: ${resultado.transaction_id || "sem ID"} | ` +
+    `Valor: R$ ${Number(resultado.valor_total || 0).toFixed(2)} | Status: ${resultado.status || "pending"}`
+  );
   exibirStatus("sucesso", "Boleto emitido e ticket atualizado.");
+}
+
+function obterTimeEntriesSelecionados() {
+  return Array.from(selectedTimeEntryIds || []).map(id => {
+    const entry = ticketTimeEntries.find(item => String(item.id) === String(id));
+    if (!entry) return null;
+    const seconds = Number(entry.secondsSpent || 0);
+    const nativeCost = Number(entry.totalCost || 0);
+    const customRate = Number(document.getElementById("input-tarifa-custom")?.value || 0);
+    const useCustomRate = Boolean(CONFIG_EXTENSAO?.modeloCTarifaPropria);
+    return {
+      id: entry.id,
+      seconds,
+      cost: Number((useCustomRate ? seconds / 3600 * customRate : nativeCost).toFixed(2))
+    };
+  }).filter(Boolean);
+}
+
+async function registrarReferenciasTimeEntries(reference) {
+  if (!reference || typeof obterTimeEntriesSelecionados !== "function") return;
+  const selected = obterTimeEntriesSelecionados();
+  await Promise.all(selected.map(entry => ZOHODESK.request({
+    url: `https://desk.zoho.com/api/v1/timeEntry/${entry.id}`,
+    type: "PATCH",
+    postBody: JSON.stringify({ cf: { cf_referencia_cobranca: reference } }),
+    contentType: "application/json",
+    headers: { orgId: portalOrgId }
+  })));
+}
+
+async function adicionarComentarioInterno(ticketId, content) {
+  await ZOHODESK.request({
+    url: `https://desk.zoho.com/api/v1/tickets/${ticketId}/comments`,
+    type: "POST",
+    postBody: JSON.stringify({ content, isPublic: false }),
+    contentType: "application/json",
+    headers: { orgId: portalOrgId }
+  });
 }
 
 async function obterBoletoId() {
@@ -137,11 +192,27 @@ async function cancelarBoleto() {
       motivo: motivo.trim()
     });
     await atualizarStatusTicket(ticketId, resultado.status || "canceled");
+    await limparReferenciasTimeEntries();
+    await adicionarComentarioInterno(ticketId, `Boleto ${boletoId} cancelado. Motivo: ${motivo.trim()}`);
     exibirStatus("sucesso", "Boleto cancelado.");
   } catch (erro) {
     exibirStatus("erro", erro.mensagemAmigavel || erro.message || "Não foi possível cancelar o boleto.");
   } finally {
     if (button) button.disabled = false;
+  }
+
+  async function limparReferenciasTimeEntries() {
+    if (typeof ticketTimeEntries === "undefined") return;
+    const entries = ticketTimeEntries.filter(entry =>
+      entry.cf?.cf_referencia_cobranca || entry.cf_referencia_cobranca
+    );
+    await Promise.all(entries.map(entry => ZOHODESK.request({
+      url: `https://desk.zoho.com/api/v1/timeEntry/${entry.id}`,
+      type: "PATCH",
+      postBody: JSON.stringify({ cf: { cf_referencia_cobranca: "" } }),
+      contentType: "application/json",
+      headers: { orgId: portalOrgId }
+    })));
   }
 }
 

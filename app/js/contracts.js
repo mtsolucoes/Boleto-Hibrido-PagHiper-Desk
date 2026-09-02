@@ -25,14 +25,9 @@ async function initModeloCScreen() {
     const ticketData = typeof ticketRes === "string" ? JSON.parse(ticketRes) : ticketRes;
     const accountId = ticketData.accountId;
 
-    if (!accountId) {
-      renderNoAccountWarning();
-      return;
-    }
-
     // 2. Dispara buscas em paralelo para otimizar tempo de carga (Connections)
     const [contracts, timeEntries] = await Promise.all([
-      fetchAccountContracts(accountId),
+      accountId ? fetchAccountContracts(accountId) : Promise.resolve([]),
       fetchTicketTimeEntries(ticketId)
     ]);
 
@@ -84,12 +79,9 @@ async function fetchTicketTimeEntries(ticketId) {
   }
 }
 
-// FILTRA TIME ENTRIES OMITINDO OS QUE JÁ POSSUEM REFERÊNCIA (Evita cobrança dupla) [5, 6]
+// Mantém entradas já referenciadas: o agente deve ser avisado, não bloqueado.
 function filterUnbilledTimeEntries(entries) {
-  return entries.filter(entry => {
-    const ref = entry.cf?.cf_referencia_cobranca || entry.cf_referencia_cobranca;
-    return !ref; // Se já tiver referência de boleto cadastrada, oculta da tela
-  });
+  return entries;
 }
 
 // RENDERIZADOR DE STATUS DE CONTRATO (Trata ausência de contrato) [14]
@@ -144,6 +136,7 @@ function renderTimeEntriesList(entries) {
     
     // Custo nativo calculado pelo Desk
     const nativeCost = parseFloat(entry.totalCost || 0);
+    const reference = entry.cf?.cf_referencia_cobranca || entry.cf_referencia_cobranca || "";
 
     html += `
       <div class="hora-item">
@@ -155,7 +148,9 @@ function renderTimeEntriesList(entries) {
             <span class="hora-spent">Tempo: ${timeFormatted}</span>
           </div>
         </label>
-        <span class="hora-cost">${nativeCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+        <span class="hora-cost">${nativeCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          ${reference ? `<small class="aviso-referencia">Já cobrado: ${reference}</small>` : ""}
+        </span>
       </div>
     `;
   });
@@ -169,6 +164,12 @@ function toggleTimeEntrySelection(entryId) {
   } else {
     selectedTimeEntryIds.add(entryId);
   }
+
+  function recalcularValorEEstado() {
+    if (typeof recalcularValorEEstadoProdutos === "function") {
+      recalcularValorEEstadoProdutos();
+    }
+  }
   recalcularValorEEstado();
 }
 
@@ -178,7 +179,8 @@ function setupTarifaCustomUI() {
   const inputRate = document.getElementById("input-tarifa-custom");
 
   // Verifica preferência de cálculo salva no Módulo (Seção 3.1)
-  if (CONFIG_EXTENSAO?.modeloCTarifaPropria) {
+  if (CONFIG_EXTENSAO?.modeloCTarifaPropria === true ||
+      CONFIG_EXTENSAO?.modeloCTarifaPropria === "true") {
     if (customRateContainer) customRateContainer.style.display = "block";
     if (inputRate) {
       inputRate.removeEventListener("input", recalcularValorEEstado);

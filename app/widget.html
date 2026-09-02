@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Boletos PagHiper</title>
   <link rel="stylesheet" href="css/style.css">
-  <script type="text/javascript" src="https://js.zohostatic.com/support/developer_sdk/v1/zoho_desk_developers_sdk.utf8.js"></script>
+  <script type="text/javascript" src="https://js.zohostatic.com/support/developer_sdk/v1/js/ZohoDeskClientSDK.min.js"></script>
 </head>
 <body>
 
@@ -19,8 +19,8 @@
     
     <!-- Navegação de Abas -->
     <div class="tab-header">
-      <button class="tab-btn active" onclick="switchTab('modelo-b')">Modelo B (Produtos)</button>
-      <button class="tab-btn" onclick="switchTab('modelo-c')">Modelo C (Horas)</button>
+      <button class="tab-btn active" onclick="switchTab('modelo-b', event)">Modelo B (Produtos)</button>
+      <button class="tab-btn" onclick="switchTab('modelo-c', event)">Modelo C (Horas)</button>
     </div>
 
     <div id="banner-erro-config" class="banner-erro" style="display:none;"></div>
@@ -101,12 +101,12 @@
   <!-- Lógica de controle de Abas -->
   <script>
     let activeTab = "modelo-b";
-    function switchTab(tabId) {
+    function switchTab(tabId, clickEvent) {
       activeTab = tabId;
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-      event.target.classList.add('active');
+      clickEvent.target.classList.add('active');
       document.getElementById('tab-' + tabId).classList.add('active');
 
       if (tabId === "modelo-c") {
