@@ -26,9 +26,17 @@ async function montarPayloadBoleto() {
     : [];
   const produtosTotal = produtos.reduce((total, produto) => total + produto.preco, 0);
   const horasTotal = timeEntries.reduce((total, entry) => total + entry.cost, 0);
-  const valorTotal = produtosTotal + horasTotal;
+  const valorTeste = Number(document.getElementById("input-valor-teste")?.value || 0);
+  const valorTotal = valorTeste > 0 ? valorTeste : produtosTotal + horasTotal;
   const cpfCnpj = document.getElementById("input-cpf-cnpj").value.replace(/\D/g, "");
   if (valorTotal < 3) throw new Error("O valor mínimo para emissão é R$ 3,00.");
+  if (valorTeste > 0 && produtos.length === 0 && timeEntries.length === 0) {
+    produtos.push({
+      id: "teste-local",
+      nome: "Valor de teste local",
+      preco: valorTeste
+    });
+  }
   return {
     valor_total: Number(valorTotal.toFixed(2)),
     cpf_cnpj: cpfCnpj,
@@ -71,15 +79,23 @@ async function buscarDadosPagador() {
 }
 
 async function dispararGeracaoBoletoViaProxy(payload) {
-  const resposta = await ZOHODESK.request({
-    url: "customfunction:gerarBoletoPagHiper",
-    type: "POST",
-    postBody: JSON.stringify(payload),
-    contentType: "application/json",
-    headers: { orgId: portalOrgId },
-    connectionLinkName: "zohodesk_conn"
-  });
-  const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
+  let resposta;
+  try {
+    resposta = await ZOHODESK.request({
+      url: "customfunction:gerarBoletoPagHiper",
+      type: "POST",
+      postBody: JSON.stringify(payload),
+      contentType: "application/json",
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
+    });
+  } catch (error) {
+    throw new Error("A function gerarBoletoPagHiper não está disponível no ambiente local. Para testar o botão, associe essa function no Sigma ou use uma URL de teste.");
+  }
+  const dados = parseDeskApiResponse(resposta);
+  if (dados?.statusCode && Number(dados.statusCode) >= 400) {
+    throw new Error(dados.response?.message || dados.message || `A function retornou HTTP ${dados.statusCode}.`);
+  }
   if (dados?.erro) {
     const erro = new Error(dados.erro);
     erro.mensagemAmigavel = dados.mensagemAmigavel;
@@ -119,7 +135,9 @@ function obterTimeEntriesSelecionados() {
   return Array.from(selectedTimeEntryIds || []).map(id => {
     const entry = ticketTimeEntries.find(item => String(item.id) === String(id));
     if (!entry) return null;
-    const seconds = Number(entry.secondsSpent || 0);
+    const seconds = typeof getTimeEntrySeconds === "function"
+      ? getTimeEntrySeconds(entry)
+      : Number(entry.secondsSpent || 0);
     const nativeCost = Number(entry.totalCost || 0);
     const customRate = Number(document.getElementById("input-tarifa-custom")?.value || 0);
     const useCustomRate = Boolean(CONFIG_EXTENSAO?.modeloCTarifaPropria);
@@ -223,15 +241,20 @@ async function cancelarBoleto() {
 }
 
 async function dispararOperacaoBoleto(funcao, payload) {
-  const resposta = await ZOHODESK.request({
-    url: `customfunction:${funcao}`,
-    type: "POST",
-    postBody: JSON.stringify(payload),
-    contentType: "application/json",
-    headers: { orgId: portalOrgId },
-    connectionLinkName: "zohodesk_conn"
-  });
-  const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
+  let resposta;
+  try {
+    resposta = await ZOHODESK.request({
+      url: `customfunction:${funcao}`,
+      type: "POST",
+      postBody: JSON.stringify(payload),
+      contentType: "application/json",
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
+    });
+  } catch (error) {
+    throw new Error(`A function ${funcao} não está disponível no ambiente local.`);
+  }
+  const dados = parseDeskApiResponse(resposta);
   if (dados?.erro) {
     const erro = new Error(dados.erro);
     erro.mensagemAmigavel = dados.mensagemAmigavel;

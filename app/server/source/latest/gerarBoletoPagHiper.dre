@@ -6,13 +6,13 @@
 response = Map();
 
 // 1. CAPTURAR OS PARÂMETROS ENVIADOS PELO WIDGET
-valorTotal = input.get("valor_total");
-cpfCnpj = input.get("cpf_cnpj");
-produtos = input.get("produtos");
-pagador = input.get("pagador");
-diasVencimento = input.get("dias_vencimento");
-multa = input.get("multa");
-juros = input.get("juros");
+valorTotal = data.get("valor_total");
+cpfCnpj = data.get("cpf_cnpj");
+produtos = data.get("produtos");
+pagador = data.get("pagador");
+diasVencimento = data.get("dias_vencimento");
+multa = data.get("multa");
+juros = data.get("juros");
 
 // 2. DEFESA EM PROFUNDIDADE: SEGUNDA VALIDAÇÃO DE VALOR MÍNIMO
 if (valorTotal < 3.00) {
@@ -61,7 +61,7 @@ for each produto in produtos {
     item.put("price_cents", precoCents);
     itensPayload.add(item);
 }
-timeEntries = input.get("time_entries");
+timeEntries = data.get("time_entries");
 for each lancamento in timeEntries {
     item = Map();
     item.put("description", "Atendimento por tempo - " + lancamento.get("id"));

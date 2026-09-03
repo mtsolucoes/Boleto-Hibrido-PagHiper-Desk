@@ -21,6 +21,7 @@
     <div class="tab-header">
       <button class="tab-btn active" onclick="switchTab('modelo-b', event)">Modelo B (Produtos)</button>
       <button class="tab-btn" onclick="switchTab('modelo-c', event)">Modelo C (Horas)</button>
+      <button class="tab-btn" onclick="switchTab('diagnostico', event)">Diagnóstico API</button>
     </div>
 
     <div id="banner-erro-config" class="banner-erro" style="display:none;"></div>
@@ -59,6 +60,25 @@
           <label for="input-tarifa-custom">Tarifa por Hora (R$)</label>
           <input type="number" id="input-tarifa-custom" placeholder="Ex: 150.00" step="0.01" min="0.00" value="0.00" />
         </div>
+
+        <div class="campo-form">
+          <label for="input-valor-teste">Valor de teste para emissão (R$)</label>
+          <input type="number" id="input-valor-teste" placeholder="Opcional, ex: 3.00" step="0.01" min="0.00" value="0.00" oninput="recalcularValorEEstado()" />
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-diagnostico" class="tab-content">
+      <div class="container-boleto">
+        <h3>Diagnóstico da API do Desk</h3>
+        <div class="campo-form">
+          <label for="diagnostico-ticket-id">ID do ticket</label>
+          <input type="text" id="diagnostico-ticket-id" placeholder="Ex: 1102159000007189001" />
+        </div>
+        <button id="btn-executar-diagnostico" class="btn-secundario" onclick="executarDiagnosticoDesk()">
+          Consultar Ticket e Horas
+        </button>
+        <pre id="diagnostico-resultado" class="diagnostico-resultado">Nenhuma consulta executada.</pre>
       </div>
     </div>
 
@@ -97,6 +117,7 @@
   <script type="text/javascript" src="js/products.js"></script>
   <script type="text/javascript" src="js/contracts.js"></script>
   <script type="text/javascript" src="js/paghiper.js"></script>
+  <script type="text/javascript" src="js/diagnostico.js"></script>
   <script type="text/javascript" src="js/extension.js"></script>
 
   <!-- Lógica de controle de Abas -->
@@ -112,6 +133,8 @@
 
       if (tabId === "modelo-c") {
         initModeloCScreen(); // Inicializa lógica de contratos e horas
+      } else if (tabId === "diagnostico") {
+        preencherTicketAtualNoDiagnostico();
       } else {
         recalcularValorEEstado(); // Reseta para cálculo de produtos
       }

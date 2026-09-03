@@ -29,6 +29,20 @@
   display: block;
 }
 
+.diagnostico-resultado {
+  min-height: 220px;
+  max-height: 440px;
+  overflow: auto;
+  margin-top: 12px;
+  padding: 10px;
+  background: #1f2933;
+  color: #d9f7e8;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* CAIXA DE STATUS DO CONTRATO */
 .status-contrato-box {
   background-color: #f0f4f9;

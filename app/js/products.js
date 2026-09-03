@@ -16,7 +16,18 @@ function recalcularValorEEstado() {
 
 async function inicializarTelaProdutos() {
   try {
-    CONFIG_EXTENSAO = await inicializarModuloConfiguracao(); // vem do extension.js
+    try {
+      CONFIG_EXTENSAO = await inicializarModuloConfiguracao(); // vem do extension.js
+    } catch (erroConfig) {
+      console.warn("[PagHiper] Configuração indisponível; usando valores padrão:", erroConfig);
+      CONFIG_EXTENSAO = {
+        diasVencimento: 5,
+        multa: 0,
+        juros: false,
+        modeloCTarifaPropria: false,
+        modeloBAutoSelecionar: false
+      };
+    }
 
     const produtos = await buscarProdutosDesk();
     PRODUTOS_CACHE = produtos;
@@ -43,13 +54,19 @@ async function inicializarTelaProdutos() {
 async function buscarProdutosDesk() {
   try {
     const resposta = await ZOHODESK.request({
-      url: "https://desk.zoho.com/api/v1/products?limit=100",
+      url: getDeskApiUrl("/api/v1/products?limit=100"),
       type: "GET",
+      postBody: {},
       headers: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
+      connectionLinkName: DESK_CONNECTION_NAME
     });
-    const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
-    return dados?.data || [];
+    const dados = parseDeskApiResponse(resposta);
+    const produtos = Array.isArray(dados) ? dados : dados?.data;
+    if (!Array.isArray(produtos)) {
+      console.warn("[PagHiper] Resposta de produtos sem data:", dados);
+      return [];
+    }
+    return produtos;
   } catch (erro) {
     console.error("[PagHiper] Falha ao buscar produtos:", erro);
     throw erro;
@@ -64,12 +81,13 @@ async function buscarProdutoVinculadoAoTicket() {
   try {
     const ticketId = await ZOHODESK.get("ticket.id");
     const resposta = await ZOHODESK.request({
-      url: `https://desk.zoho.com/api/v1/tickets/${ticketId}?include=products`,
+      url: getDeskApiUrl(`/api/v1/tickets/${ticketId}?include=products`),
       type: "GET",
+      postBody: {},
       headers: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
+      connectionLinkName: DESK_CONNECTION_NAME
     });
-    const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
+    const dados = parseDeskApiResponse(resposta);
     // A API retorna produtos vinculados em um array; pegamos o primeiro.
     return dados?.products?.[0]?.id || null;
   } catch (erro) {
@@ -135,6 +153,8 @@ function recalcularValorEEstadoProdutos() {
   if (typeof obterTimeEntriesSelecionados === "function") {
     total += obterTimeEntriesSelecionados().reduce((sum, entry) => sum + entry.cost, 0);
   }
+  const valorTeste = parseFloat(document.getElementById("input-valor-teste")?.value || 0);
+  if (valorTeste > 0) total = valorTeste;
 
   document.getElementById("valor-total-selecionado").textContent =
     `R$ ${total.toFixed(2).replace(".", ",")}`;
@@ -148,8 +168,9 @@ function recalcularValorEEstadoProdutos() {
 
   const btn = document.getElementById("btn-gerar-boleto");
   const hasTimeEntries = typeof selectedTimeEntryIds !== "undefined" && selectedTimeEntryIds.size > 0;
+  const hasTestValue = valorTeste >= VALOR_MINIMO_BOLETO;
   btn.disabled = abaixoDoMinimo || !cpfCnpjValido ||
-    (checkboxesMarcados.length === 0 && !hasTimeEntries);
+    (checkboxesMarcados.length === 0 && !hasTimeEntries && !hasTestValue);
 }
 
 function atualizarFeedbackCpfCnpj(valido) {

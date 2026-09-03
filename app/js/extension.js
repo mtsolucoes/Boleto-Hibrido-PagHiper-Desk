@@ -37,6 +37,8 @@ const SCHEMA_GERAL_PROVISIONAMENTO = {
 let portalOrgId = null;
 let activeTicketId = null;
 let CONFIG_EXTENSAO = null;
+let deskDomainUrl = "https://desk.zoho.com";
+const DESK_CONNECTION_NAME = "zohodesk_conn";
 
 ZOHODESK.extension.onload().then(async function (App) {
   try {
@@ -50,6 +52,8 @@ ZOHODESK.extension.onload().then(async function (App) {
 
 async function resolverContextoDesk(App) {
   activeTicketId = App?.model?.id || await getSdkValue("ticket.id");
+  deskDomainUrl = App?.meta?.deskDomainUrl || deskDomainUrl;
+  deskDomainUrl = deskDomainUrl.replace(/\/$/, "");
 
   const portal = await getSdkValue("portal").catch(() => null);
   portalOrgId = App?.model?.orgId ||
@@ -73,6 +77,27 @@ async function getSdkValue(key) {
     return response[key];
   }
   return response;
+}
+
+function getDeskApiUrl(path) {
+  return `https://desk.zoho.com${path}`;
+}
+
+function parseDeskApiResponse(response) {
+  let parsed = response;
+  if (typeof parsed === "string") parsed = JSON.parse(parsed);
+  while (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    if (parsed.response !== undefined) {
+      parsed = typeof parsed.response === "string" ? JSON.parse(parsed.response) : parsed.response;
+      continue;
+    }
+    if (parsed.statusMessage !== undefined) {
+      parsed = typeof parsed.statusMessage === "string" ? JSON.parse(parsed.statusMessage) : parsed.statusMessage;
+      continue;
+    }
+    break;
+  }
+  return parsed;
 }
 
 async function inicializarTudoBasico() {
@@ -111,17 +136,17 @@ async function inicializarTudo() {
 
 async function inicializarModuloConfiguracao() {
   const resposta = await ZOHODESK.request({
-    url: "https://desk.zoho.com/api/v1/organizationModules",
+    url: getDeskApiUrl("/api/v1/organizationModules"),
     type: "GET",
     headers: { orgId: portalOrgId },
     connectionLinkName: "zohodesk_conn"
   });
-  const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
+  const dados = parseDeskApiResponse(resposta);
   let modulo = (dados?.data || []).find(item => item.apiName === CONFIG_MODULE_API_NAME);
 
   if (!modulo) {
     const criado = await ZOHODESK.request({
-      url: "https://desk.zoho.com/api/v1/organizationModules",
+      url: getDeskApiUrl("/api/v1/organizationModules"),
       type: "POST",
       headers: { orgId: portalOrgId, "Content-Type": "application/json" },
       connectionLinkName: "zohodesk_conn",
@@ -132,17 +157,17 @@ async function inicializarModuloConfiguracao() {
         pluralLabel: "Configurações da Extensão"
       })
     });
-    const criadoJson = typeof criado === "string" ? JSON.parse(criado) : criado;
+    const criadoJson = parseDeskApiResponse(criado);
     modulo = criadoJson?.data || criadoJson;
   }
 
   const records = await ZOHODESK.request({
-    url: `https://desk.zoho.com/api/v1/${CONFIG_MODULE_API_NAME}?limit=1`,
+    url: getDeskApiUrl(`/api/v1/${CONFIG_MODULE_API_NAME}?limit=1`),
     type: "GET",
     headers: { orgId: portalOrgId },
     connectionLinkName: "zohodesk_conn"
   });
-  const parsedRecords = typeof records === "string" ? JSON.parse(records) : records;
+  const parsedRecords = parseDeskApiResponse(records);
   const record = parsedRecords?.data?.[0] || {};
   const config = { ...record, ...(record.cf || {}) };
   return {
@@ -158,12 +183,12 @@ async function inicializarModuloConfiguracao() {
 
 async function findMissingFields(moduleName) {
   const response = await ZOHODESK.request({
-    url: `https://desk.zoho.com/api/v1/fields?module=${moduleName}`,
+    url: getDeskApiUrl(`/api/v1/fields?module=${moduleName}`),
     type: "GET",
     headers: { orgId: portalOrgId },
     connectionLinkName: "zohodesk_conn"
   });
-  const data = typeof response === "string" ? JSON.parse(response) : response;
+  const data = parseDeskApiResponse(response);
   const existingFields = data?.data || [];
   return SCHEMA_GERAL_PROVISIONAMENTO[moduleName].filter(requiredField =>
     !existingFields.some(field =>
@@ -195,13 +220,13 @@ async function createFieldInZoho(moduleName, fieldConfig) {
   };
   if (fieldConfig.maxLength) payload.maxLength = String(fieldConfig.maxLength);
   const response = await ZOHODESK.request({
-    url: `https://desk.zoho.com/api/v1/fields?module=${moduleName}`,
+    url: getDeskApiUrl(`/api/v1/fields?module=${moduleName}`),
     type: "POST",
     headers: { orgId: portalOrgId, "Content-Type": "application/json" },
     connectionLinkName: "zohodesk_conn",
     postBody: JSON.stringify(payload)
   });
-  return typeof response === "string" ? JSON.parse(response) : response;
+  return parseDeskApiResponse(response);
 }
 
 function loadWidgetMainScreen() {

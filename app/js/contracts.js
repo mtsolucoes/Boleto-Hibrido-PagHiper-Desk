@@ -20,13 +20,13 @@ async function initModeloCScreen() {
       ? await getSdkValue("ticket.id")
       : await ZOHODESK.get("ticket.id");
     const ticketRes = await ZOHODESK.request({
-      url: `https://desk.zoho.com/api/v1/tickets/${ticketId}?include=contacts`,
+      url: getDeskApiUrl(`/api/v1/tickets/${ticketId}?include=contacts`),
       type: "GET",
-      headers: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
+      postBody: {},
+      headers: { orgId: portalOrgId }
     });
-    const ticketData = parseDeskResponse(ticketRes);
-    const accountId = ticketData.accountId;
+    const ticketData = parseDeskApiResponse(ticketRes);
+    const accountId = ticketData.accountId || await fetchContactAccountId(ticketData.contactId);
 
     // 2. Dispara buscas em paralelo para otimizar tempo de carga (Connections)
     const [contracts, timeEntries] = await Promise.all([
@@ -51,17 +51,40 @@ async function initModeloCScreen() {
   }
 }
 
+async function fetchContactAccountId(contactId) {
+  if (!contactId) return null;
+  try {
+    const response = await ZOHODESK.request({
+      url: getDeskApiUrl(`/api/v1/contacts/${contactId}`),
+      type: "GET",
+      postBody: {},
+      headers: { orgId: portalOrgId },
+      connectionLinkName: DESK_CONNECTION_NAME
+    });
+    const contact = parseDeskApiResponse(response);
+    return contact?.accountId || contact?.account?.id || null;
+  } catch (error) {
+    console.warn("[PagHiper] Falha ao buscar Account do contato:", error);
+    return null;
+  }
+}
+
 // GET /api/v1/accounts/{accountId}/contracts (Busca contratos do cliente) [10, 11]
 async function fetchAccountContracts(accountId) {
   try {
     const res = await ZOHODESK.request({
-      url: `https://desk.zoho.com/api/v1/accounts/${accountId}/contracts?contractStatus=ACTIVE`,
+      url: getDeskApiUrl(`/api/v1/accounts/${accountId}/contracts?contractStatus=ACTIVE`),
       type: "GET",
-      headers: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
+      postBody: {},
+      headers: { orgId: portalOrgId }
     });
-    const parsed = parseDeskResponse(res);
-    return Array.isArray(parsed?.data) ? parsed.data : [];
+    const parsed = parseDeskApiResponse(res);
+    const entries = Array.isArray(parsed) ? parsed : parsed?.data;
+    if (!Array.isArray(entries)) {
+      console.warn("[PagHiper] Resposta de contratos sem data:", parsed);
+      return [];
+    }
+    return entries;
   } catch (err) {
     console.warn("[PagHiper] Falha ao consultar contratos ativos:", err);
     return [];
@@ -72,35 +95,36 @@ async function fetchAccountContracts(accountId) {
 async function fetchTicketTimeEntries(ticketId) {
   try {
     const res = await ZOHODESK.request({
-      url: `https://desk.zoho.com/api/v1/tickets/${ticketId}/timeEntry?billStatus=billable`,
+      url: getDeskApiUrl(`/api/v1/tickets/${ticketId}/timeEntry?billStatus=billable`),
       type: "GET",
-      headers: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
+      postBody: {},
+      headers: { orgId: portalOrgId }
     });
-    const parsed = parseDeskResponse(res);
-    return Array.isArray(parsed?.data) ? parsed.data : [];
+    const parsed = parseDeskApiResponse(res);
+    const entries = Array.isArray(parsed) ? parsed : parsed?.data;
+    if (!Array.isArray(entries)) {
+      console.warn("[PagHiper] Resposta de Time Entries sem data:", parsed);
+      return [];
+    }
+    return entries;
   } catch (err) {
     console.error("[PagHiper] Falha ao buscar lançamentos de tempo:", err);
     return [];
   }
 }
 
-function parseDeskResponse(response) {
-  let parsed = response;
-  if (typeof parsed === "string") parsed = JSON.parse(parsed);
-
-  if (typeof parsed?.response === "string") {
-    parsed = JSON.parse(parsed.response);
-  } else if (parsed?.response && typeof parsed.response === "object") {
-    parsed = parsed.response;
-  }
-
-  return parsed;
-}
-
 // Mantém entradas já referenciadas: o agente deve ser avisado, não bloqueado.
 function filterUnbilledTimeEntries(entries) {
   return entries;
+}
+
+function getTimeEntrySeconds(entry) {
+  const secondsSpent = Number(entry.secondsSpent || 0);
+  if (secondsSpent > 0) return secondsSpent;
+
+  const hoursSpent = Number(entry.hoursSpent || 0);
+  const minutesSpent = Number(entry.minutesSpent || 0);
+  return (hoursSpent * 3600) + (minutesSpent * 60);
 }
 
 // RENDERIZADOR DE STATUS DE CONTRATO (Trata ausência de contrato) [14]
@@ -150,7 +174,7 @@ function renderTimeEntriesList(entries) {
   let html = "";
   entries.forEach(entry => {
     // Converte segundosspent para formato HH:MM:SS
-    const seconds = parseInt(entry.secondsSpent || 0, 10);
+    const seconds = getTimeEntrySeconds(entry);
     const timeFormatted = new Date(seconds * 1000).toISOString().substr(11, 8);
     const ownerName = entry.owner?.name || "Agente";
     
@@ -183,7 +207,7 @@ function renderTimeEntriesSummary(entries) {
   const summary = document.getElementById("resumo-time-entries");
   if (!summary) return;
 
-  const totalSeconds = entries.reduce((total, entry) => total + Number(entry.secondsSpent || 0), 0);
+  const totalSeconds = entries.reduce((total, entry) => total + getTimeEntrySeconds(entry), 0);
   const totalCost = entries.reduce((total, entry) => total + Number(entry.totalCost || 0), 0);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
