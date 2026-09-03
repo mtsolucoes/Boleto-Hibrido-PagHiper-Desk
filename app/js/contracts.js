@@ -16,13 +16,16 @@ async function initModeloCScreen() {
     showLoaderInElement("lista-time-entries", "Processando lançamentos de tempo...");
 
     // 1. Busca os dados de AccountId do Ticket para herdar contratos
-    const ticketId = await ZOHODESK.get("ticket.id");
+    const ticketId = typeof getSdkValue === "function"
+      ? await getSdkValue("ticket.id")
+      : await ZOHODESK.get("ticket.id");
     const ticketRes = await ZOHODESK.request({
       url: `https://desk.zoho.com/api/v1/tickets/${ticketId}?include=contacts`,
       type: "GET",
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     });
-    const ticketData = typeof ticketRes === "string" ? JSON.parse(ticketRes) : ticketRes;
+    const ticketData = parseDeskResponse(ticketRes);
     const accountId = ticketData.accountId;
 
     // 2. Dispara buscas em paralelo para otimizar tempo de carga (Connections)
@@ -33,6 +36,7 @@ async function initModeloCScreen() {
 
     activeAccountContracts = contracts;
     ticketTimeEntries = filterUnbilledTimeEntries(timeEntries);
+    selectedTimeEntryIds = new Set();
 
     // 3. Renderiza os componentes de faturamento
     renderContractStatus(contracts);
@@ -53,10 +57,11 @@ async function fetchAccountContracts(accountId) {
     const res = await ZOHODESK.request({
       url: `https://desk.zoho.com/api/v1/accounts/${accountId}/contracts?contractStatus=ACTIVE`,
       type: "GET",
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     });
-    const parsed = typeof res === "string" ? JSON.parse(res) : res;
-    return parsed.data || [];
+    const parsed = parseDeskResponse(res);
+    return Array.isArray(parsed?.data) ? parsed.data : [];
   } catch (err) {
     console.warn("[PagHiper] Falha ao consultar contratos ativos:", err);
     return [];
@@ -69,14 +74,28 @@ async function fetchTicketTimeEntries(ticketId) {
     const res = await ZOHODESK.request({
       url: `https://desk.zoho.com/api/v1/tickets/${ticketId}/timeEntry?billStatus=billable`,
       type: "GET",
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     });
-    const parsed = typeof res === "string" ? JSON.parse(res) : res;
-    return parsed.data || [];
+    const parsed = parseDeskResponse(res);
+    return Array.isArray(parsed?.data) ? parsed.data : [];
   } catch (err) {
     console.error("[PagHiper] Falha ao buscar lançamentos de tempo:", err);
     return [];
   }
+}
+
+function parseDeskResponse(response) {
+  let parsed = response;
+  if (typeof parsed === "string") parsed = JSON.parse(parsed);
+
+  if (typeof parsed?.response === "string") {
+    parsed = JSON.parse(parsed.response);
+  } else if (parsed?.response && typeof parsed.response === "object") {
+    parsed = parsed.response;
+  }
+
+  return parsed;
 }
 
 // Mantém entradas já referenciadas: o agente deve ser avisado, não bloqueado.
@@ -123,6 +142,7 @@ function renderTimeEntriesList(entries) {
   if (!container) return;
 
   if (entries.length === 0) {
+    renderTimeEntriesSummary(entries);
     container.innerHTML = '<p class="status-text" style="padding:10px;">Nenhum lançamento de tempo pendente de cobrança.</p>';
     return;
   }
@@ -156,6 +176,20 @@ function renderTimeEntriesList(entries) {
   });
 
   container.innerHTML = html;
+  renderTimeEntriesSummary(entries);
+}
+
+function renderTimeEntriesSummary(entries) {
+  const summary = document.getElementById("resumo-time-entries");
+  if (!summary) return;
+
+  const totalSeconds = entries.reduce((total, entry) => total + Number(entry.secondsSpent || 0), 0);
+  const totalCost = entries.reduce((total, entry) => total + Number(entry.totalCost || 0), 0);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  summary.textContent = `Total disponível: ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")} | ${totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 }
 
 function toggleTimeEntrySelection(entryId) {

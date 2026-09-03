@@ -44,7 +44,9 @@ async function buscarProdutosDesk() {
   try {
     const resposta = await ZOHODESK.request({
       url: "https://desk.zoho.com/api/v1/products?limit=100",
-      type: "GET"
+      type: "GET",
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     });
     const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
     return dados?.data || [];
@@ -63,7 +65,9 @@ async function buscarProdutoVinculadoAoTicket() {
     const ticketId = await ZOHODESK.get("ticket.id");
     const resposta = await ZOHODESK.request({
       url: `https://desk.zoho.com/api/v1/tickets/${ticketId}?include=products`,
-      type: "GET"
+      type: "GET",
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     });
     const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
     // A API retorna produtos vinculados em um array; pegamos o primeiro.

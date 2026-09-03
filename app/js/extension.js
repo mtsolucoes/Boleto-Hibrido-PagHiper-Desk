@@ -113,7 +113,8 @@ async function inicializarModuloConfiguracao() {
   const resposta = await ZOHODESK.request({
     url: "https://desk.zoho.com/api/v1/organizationModules",
     type: "GET",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   let modulo = (dados?.data || []).find(item => item.apiName === CONFIG_MODULE_API_NAME);
@@ -123,6 +124,7 @@ async function inicializarModuloConfiguracao() {
       url: "https://desk.zoho.com/api/v1/organizationModules",
       type: "POST",
       headers: { orgId: portalOrgId, "Content-Type": "application/json" },
+      connectionLinkName: "zohodesk_conn",
       postBody: JSON.stringify({
         apiName: CONFIG_MODULE_API_NAME,
         displayLabel: CONFIG_MODULE_LABEL,
@@ -137,7 +139,8 @@ async function inicializarModuloConfiguracao() {
   const records = await ZOHODESK.request({
     url: `https://desk.zoho.com/api/v1/${CONFIG_MODULE_API_NAME}?limit=1`,
     type: "GET",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const parsedRecords = typeof records === "string" ? JSON.parse(records) : records;
   const record = parsedRecords?.data?.[0] || {};
@@ -157,7 +160,8 @@ async function findMissingFields(moduleName) {
   const response = await ZOHODESK.request({
     url: `https://desk.zoho.com/api/v1/fields?module=${moduleName}`,
     type: "GET",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const data = typeof response === "string" ? JSON.parse(response) : response;
   const existingFields = data?.data || [];
@@ -194,6 +198,7 @@ async function createFieldInZoho(moduleName, fieldConfig) {
     url: `https://desk.zoho.com/api/v1/fields?module=${moduleName}`,
     type: "POST",
     headers: { orgId: portalOrgId, "Content-Type": "application/json" },
+    connectionLinkName: "zohodesk_conn",
     postBody: JSON.stringify(payload)
   });
   return typeof response === "string" ? JSON.parse(response) : response;

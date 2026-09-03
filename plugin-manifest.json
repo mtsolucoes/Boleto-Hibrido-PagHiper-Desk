@@ -17,7 +17,39 @@
   "cspDomains": {
     "connect-src": ["https://desk.zoho.com"]
   },
-  "connectors": [],
+  "connectors": [
+    {
+      "connectionLinkName": "zohodesk_conn",
+      "connectionName": "zohodesk_conn",
+      "serviceName": "zoho_desk",
+      "userAccess": true,
+      "isUserDefinedService": false,
+      "sharedBy": "643067220",
+      "scope": [
+        "Desk.settings.ALL",
+        "Desk.basic.ALL",
+        "Desk.tickets.ALL",
+        "Desk.contacts.ALL",
+        "Desk.tasks.ALL",
+        "Desk.extensions.ALL",
+        "Desk.calls.ALL",
+        "Desk.events.ALL",
+        "Desk.community.ALL",
+        "Desk.integrations.ALL",
+        "Desk.custommodule.ALL",
+        "Desk.modules.ALL",
+        "Desk.agents.ALL",
+        "Desk.accounts.ALL",
+        "Desk.departments.ALL",
+        "Desk.webhooks.ALL",
+        "Desk.extensions.settings.ALL",
+        "Desk.contracts.ALL",
+        "Desk.fields.ALL",
+        "Desk.channels.helpcenter.ALL",
+        "Desk.channels.email.ALL"
+      ]
+    }
+  ],
   "config": [],
   "moduleSupport": false
 }

@@ -48,7 +48,8 @@ async function buscarDadosPagador() {
   const resposta = await ZOHODESK.request({
     url: `https://desk.zoho.com/api/v1/${contatoId ? "contacts" : "accounts"}/${contatoId || accountId}`,
     type: "GET",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const contato = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   const cpfCnpj = document.getElementById("input-cpf-cnpj").value.replace(/\D/g, "");
@@ -75,7 +76,8 @@ async function dispararGeracaoBoletoViaProxy(payload) {
     type: "POST",
     postBody: JSON.stringify(payload),
     contentType: "application/json",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   if (dados?.erro) {
@@ -101,7 +103,8 @@ async function tratarRespostaSucesso(resultado) {
       }
     }),
     contentType: "application/json",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   await registrarReferenciasTimeEntries(resultado.transaction_id || "");
   await adicionarComentarioInterno(
@@ -136,7 +139,8 @@ async function registrarReferenciasTimeEntries(reference) {
     type: "PATCH",
     postBody: JSON.stringify({ cf: { cf_referencia_cobranca: reference } }),
     contentType: "application/json",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   })));
 }
 
@@ -155,7 +159,8 @@ async function obterBoletoId() {
   const resposta = await ZOHODESK.request({
     url: `https://desk.zoho.com/api/v1/tickets/${ticketId}`,
     type: "GET",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const ticket = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   const boletoId = ticket.cf?.cf_boleto_id || ticket.cf_boleto_id;
@@ -211,7 +216,8 @@ async function cancelarBoleto() {
       type: "PATCH",
       postBody: JSON.stringify({ cf: { cf_referencia_cobranca: "" } }),
       contentType: "application/json",
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      connectionLinkName: "zohodesk_conn"
     })));
   }
 }
@@ -222,7 +228,8 @@ async function dispararOperacaoBoleto(funcao, payload) {
     type: "POST",
     postBody: JSON.stringify(payload),
     contentType: "application/json",
-    headers: { orgId: portalOrgId }
+    headers: { orgId: portalOrgId },
+    connectionLinkName: "zohodesk_conn"
   });
   const dados = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
   if (dados?.erro) {
