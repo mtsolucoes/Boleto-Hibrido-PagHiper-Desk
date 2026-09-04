@@ -79,6 +79,66 @@ async function getSdkValue(key) {
   return response;
 }
 
+async function carregarConfigExtensao() {
+  const defaults = {
+    apiKey: "",
+    token: "",
+    diasVencimento: 5,
+    multa: 0,
+    juros: false,
+    ambientePagHiper: "Sandbox",
+    modeloCTarifaPropria: false,
+    modeloBAutoSelecionar: false
+  };
+
+  try {
+    const response = await getSdkValue("extension.config");
+    const rawConfig = normalizarConfigParams(response);
+
+    return {
+      ...defaults,
+      apiKey: rawConfig.api_key || rawConfig.apikey || defaults.apiKey,
+      token: rawConfig.token || defaults.token,
+      diasVencimento: Number(rawConfig.dias_vencimento || defaults.diasVencimento),
+      multa: Number(rawConfig.multa || defaults.multa),
+      juros: rawConfig.juros === true || rawConfig.juros === "true" || rawConfig.juros === "on",
+      ambientePagHiper: rawConfig.ambiente_paghiper || defaults.ambientePagHiper,
+      modeloCTarifaPropria: rawConfig.modelo_c_tarifa_propria === true ||
+        rawConfig.modelo_c_tarifa_propria === "true" ||
+        rawConfig.modelo_c_tarifa_propria === "on",
+      modeloBAutoSelecionar: rawConfig.modelo_b_auto_selecionar === true ||
+        rawConfig.modelo_b_auto_selecionar === "true" ||
+        rawConfig.modelo_b_auto_selecionar === "on"
+    };
+  } catch (error) {
+    console.warn("[PagHiper] Config params indisponiveis; usando padrao:", error);
+    return defaults;
+  }
+}
+
+function normalizarConfigParams(configParams) {
+  if (!configParams) return {};
+
+  if (Array.isArray(configParams)) {
+    return configParams.reduce((acc, item) => {
+      if (item?.name) acc[item.name] = item.value;
+      return acc;
+    }, {});
+  }
+
+  if (typeof configParams === "object") {
+    if (Array.isArray(configParams.variables)) {
+      return normalizarConfigParams(configParams.variables);
+    }
+    if (Array.isArray(configParams.config)) {
+      return normalizarConfigParams(configParams.config);
+    }
+    return configParams;
+  }
+
+  return {};
+}
+
 function getDeskApiUrl(path) {
   return `https://desk.zoho.com${path}`;
 }
@@ -102,14 +162,7 @@ function parseDeskApiResponse(response) {
 
 async function inicializarTudoBasico() {
   updateUIStatus("status-loader", "Carregando widget...");
-  CONFIG_EXTENSAO = {
-    diasVencimento: 5,
-    multa: 0,
-    juros: false,
-    ambientePagHiper: "Sandbox",
-    modeloCTarifaPropria: false,
-    modeloBAutoSelecionar: false
-  };
+  CONFIG_EXTENSAO = await carregarConfigExtensao();
   loadWidgetMainScreen();
 }
 
@@ -135,6 +188,10 @@ async function inicializarTudo() {
 }
 
 async function inicializarModuloConfiguracao() {
+  if (CONFIG_EXTENSAO) {
+    return CONFIG_EXTENSAO;
+  }
+
   const resposta = await ZOHODESK.request({
     url: getDeskApiUrl("/api/v1/organizationModules"),
     type: "GET",

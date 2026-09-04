@@ -50,6 +50,87 @@
       ]
     }
   ],
-  "config": [],
+  "config": [
+    {
+      "name": "api_key",
+      "displayName": "PagHiper API Key",
+      "secure": true,
+      "type": "text",
+      "description": "Chave API da PagHiper.",
+      "mandatory": true,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "token",
+      "displayName": "PagHiper Token",
+      "secure": true,
+      "type": "text",
+      "description": "Token da conta PagHiper.",
+      "mandatory": true,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "dias_vencimento",
+      "displayName": "Dias para vencimento",
+      "secure": false,
+      "type": "number",
+      "description": "Quantidade de dias ate o vencimento do boleto.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "multa",
+      "displayName": "Percentual de multa",
+      "secure": false,
+      "type": "number",
+      "description": "Percentual de multa por atraso. Use 0, 1 ou 2.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "juros",
+      "displayName": "Aplicar juros",
+      "secure": false,
+      "type": "checkbox",
+      "description": "Aplica juros por atraso quando marcado.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "ambiente_paghiper",
+      "displayName": "Ambiente PagHiper",
+      "secure": false,
+      "type": "text",
+      "description": "Use Sandbox ou Producao.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "modelo_b_auto_selecionar",
+      "displayName": "Selecionar produto automaticamente",
+      "secure": false,
+      "type": "checkbox",
+      "description": "Seleciona automaticamente produto vinculado ao ticket quando possivel.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    },
+    {
+      "name": "modelo_c_tarifa_propria",
+      "displayName": "Usar tarifa propria no Modelo C",
+      "secure": false,
+      "type": "checkbox",
+      "description": "Permite informar valor por hora no faturamento por tempo.",
+      "mandatory": false,
+      "userdefined": true,
+      "authType": "org"
+    }
+  ],
   "moduleSupport": false
 }
