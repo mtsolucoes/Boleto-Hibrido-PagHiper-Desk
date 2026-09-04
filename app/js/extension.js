@@ -81,12 +81,16 @@ async function getSdkValue(key) {
 
 async function carregarConfigExtensao() {
   const defaults = {
+    cnpjEmissor: "",
     apiKey: "",
     token: "",
     diasVencimento: 5,
     multa: 0,
     juros: false,
-    ambientePagHiper: "Sandbox",
+    diasDescontoAntecipado: 0,
+    descontoAntecipadoPercentual: 0,
+    exibirFraseFixa: false,
+    diasLimiteAposVencimento: 0,
     modeloCTarifaPropria: false,
     modeloBAutoSelecionar: false
   };
@@ -97,23 +101,25 @@ async function carregarConfigExtensao() {
 
     return {
       ...defaults,
+      cnpjEmissor: rawConfig.cnpj_emissor || defaults.cnpjEmissor,
       apiKey: rawConfig.api_key || rawConfig.apikey || defaults.apiKey,
       token: rawConfig.token || defaults.token,
-      diasVencimento: Number(rawConfig.dias_vencimento || defaults.diasVencimento),
-      multa: Number(rawConfig.multa || defaults.multa),
-      juros: rawConfig.juros === true || rawConfig.juros === "true" || rawConfig.juros === "on",
-      ambientePagHiper: rawConfig.ambiente_paghiper || defaults.ambientePagHiper,
-      modeloCTarifaPropria: rawConfig.modelo_c_tarifa_propria === true ||
-        rawConfig.modelo_c_tarifa_propria === "true" ||
-        rawConfig.modelo_c_tarifa_propria === "on",
-      modeloBAutoSelecionar: rawConfig.modelo_b_auto_selecionar === true ||
-        rawConfig.modelo_b_auto_selecionar === "true" ||
-        rawConfig.modelo_b_auto_selecionar === "on"
+      diasVencimento: Number(rawConfig.dias_vencimento_padrao || rawConfig.dias_vencimento || defaults.diasVencimento),
+      multa: Number(rawConfig.multa_atraso_percentual || rawConfig.multa || defaults.multa),
+      juros: configParamMarcado(rawConfig.aplicar_juros_mensal ?? rawConfig.juros),
+      diasDescontoAntecipado: Number(rawConfig.dias_desconto_antecipado || defaults.diasDescontoAntecipado),
+      descontoAntecipadoPercentual: Number(rawConfig.desconto_antecipado_percentual || defaults.descontoAntecipadoPercentual),
+      exibirFraseFixa: configParamMarcado(rawConfig.exibir_frase_fixa),
+      diasLimiteAposVencimento: Number(rawConfig.dias_limite_apos_vencimento || defaults.diasLimiteAposVencimento)
     };
   } catch (error) {
     console.warn("[PagHiper] Config params indisponiveis; usando padrao:", error);
     return defaults;
   }
+}
+
+function configParamMarcado(value) {
+  return value === true || value === "true" || value === "on" || value === "1" || value === 1;
 }
 
 function normalizarConfigParams(configParams) {

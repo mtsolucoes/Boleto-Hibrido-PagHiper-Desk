@@ -1,29 +1,42 @@
 response = Map();
 transactionId = input.get("transaction_id");
 motivo = input.get("motivo");
+apiKey = input.get("api_key");
+token = input.get("token");
+ambiente = "Producao";
 if (transactionId == null || transactionId == "" || motivo == null || motivo == "") {
     response.put("erro", "dados_cancelamento_obrigatorios");
-    response.put("mensagemAmigavel", "Boleto ID e motivo do cancelamento são obrigatórios.");
+    response.put("mensagemAmigavel", "Boleto ID e motivo do cancelamento sao obrigatorios.");
     return response;
 }
-configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
-if (configList.get("data").size() == 0) {
+if (apiKey == null || apiKey == "" || token == null || token == "") {
+    configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
+    if (configList.get("data").size() > 0) {
+        config = configList.get("data").get(0);
+        if (apiKey == null || apiKey == "") {
+            apiKey = config.get("apiKey");
+        }
+        if (apiKey == null || apiKey == "") {
+            apiKey = config.get("cf_apiKey");
+        }
+        if (token == null || token == "") {
+            token = config.get("token");
+        }
+        if (token == null || token == "") {
+            token = config.get("cf_token");
+        }
+        if (config.get("ambientePagHiper") != null) {
+            ambiente = config.get("ambientePagHiper");
+        }
+        if (config.get("cf_ambientePagHiper") != null) {
+            ambiente = config.get("cf_ambientePagHiper");
+        }
+    }
+}
+if (apiKey == null || apiKey == "" || token == null || token == "") {
     response.put("erro", "plugin_nao_configurado");
-    response.put("mensagemAmigavel", "A extensão não foi configurada.");
+    response.put("mensagemAmigavel", "Configure API Key e Token da PagHiper nas configuracoes da extensao.");
     return response;
-}
-config = configList.get("data").get(0);
-apiKey = config.get("apiKey");
-token = config.get("token");
-ambiente = config.get("ambientePagHiper");
-if (apiKey == null) {
-    apiKey = config.get("cf_apiKey");
-}
-if (token == null) {
-    token = config.get("cf_token");
-}
-if (ambiente == null) {
-    ambiente = config.get("cf_ambientePagHiper");
 }
 endpoint = "https://api.paghiper.com/transaction/cancel/";
 if (ambiente == "Sandbox") {
@@ -50,6 +63,6 @@ try {
     }
 } catch (e) {
     response.put("erro", "falha_comunicacao");
-    response.put("mensagemAmigavel", "Falha de conexão com a PagHiper.");
+    response.put("mensagemAmigavel", "Falha de conexao com a PagHiper.");
 }
 return response;

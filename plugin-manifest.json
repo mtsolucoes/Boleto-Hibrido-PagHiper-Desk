@@ -1,136 +1,162 @@
 {
-  "locale": ["en"],
-  "service": "DESK",
-  "storage": false,
-  "whiteListedDomains": ["https://desk.zoho.com"],
-  "modules": {
-    "widgets": [
-      {
-        "location": "desk.ticket.detail.rightpanel",
-        "url": "/app/widget.html",
-        "name": "Boletos PagHiper",
-        "logo": "/app/img/logo.png",
-        "icon": "/app/img/icon.png"
-      }
-    ]
-  },
-  "cspDomains": {
-    "connect-src": ["https://desk.zoho.com"]
-  },
-  "connectors": [
-    {
-      "connectionLinkName": "zohodesk_conn",
-      "connectionName": "zohodesk_conn",
-      "serviceName": "zoho_desk",
-      "userAccess": true,
-      "isUserDefinedService": false,
-      "sharedBy": "643067220",
-      "scope": [
-        "Desk.settings.ALL",
-        "Desk.basic.ALL",
-        "Desk.tickets.ALL",
-        "Desk.contacts.ALL",
-        "Desk.tasks.ALL",
-        "Desk.extensions.ALL",
-        "Desk.calls.ALL",
-        "Desk.events.ALL",
-        "Desk.community.ALL",
-        "Desk.integrations.ALL",
-        "Desk.custommodule.ALL",
-        "Desk.modules.ALL",
-        "Desk.agents.ALL",
-        "Desk.accounts.ALL",
-        "Desk.departments.ALL",
-        "Desk.webhooks.ALL",
-        "Desk.extensions.settings.ALL",
-        "Desk.contracts.ALL",
-        "Desk.fields.ALL",
-        "Desk.channels.helpcenter.ALL",
-        "Desk.channels.email.ALL"
-      ]
-    }
-  ],
-  "config": [
-    {
-      "name": "api_key",
-      "displayName": "PagHiper API Key",
-      "secure": true,
-      "type": "text",
-      "description": "Chave API da PagHiper.",
-      "mandatory": true,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "token",
-      "displayName": "PagHiper Token",
-      "secure": true,
-      "type": "text",
-      "description": "Token da conta PagHiper.",
-      "mandatory": true,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "dias_vencimento",
-      "displayName": "Dias para vencimento",
-      "secure": false,
-      "type": "number",
-      "description": "Quantidade de dias ate o vencimento do boleto.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "multa",
-      "displayName": "Percentual de multa",
-      "secure": false,
-      "type": "number",
-      "description": "Percentual de multa por atraso. Use 0, 1 ou 2.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "juros",
-      "displayName": "Aplicar juros",
-      "secure": false,
-      "type": "checkbox",
-      "description": "Aplica juros por atraso quando marcado.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "ambiente_paghiper",
-      "displayName": "Ambiente PagHiper",
-      "secure": false,
-      "type": "text",
-      "description": "Use Sandbox ou Producao.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "modelo_b_auto_selecionar",
-      "displayName": "Selecionar produto automaticamente",
-      "secure": false,
-      "type": "checkbox",
-      "description": "Seleciona automaticamente produto vinculado ao ticket quando possivel.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    },
-    {
-      "name": "modelo_c_tarifa_propria",
-      "displayName": "Usar tarifa propria no Modelo C",
-      "secure": false,
-      "type": "checkbox",
-      "description": "Permite informar valor por hora no faturamento por tempo.",
-      "mandatory": false,
-      "userdefined": true,
-      "authType": "org"
-    }
-  ],
-  "moduleSupport": false
+    "locale":  [
+                   "en"
+               ],
+    "service":  "DESK",
+    "storage":  false,
+    "whiteListedDomains":  [
+                               "https://desk.zoho.com"
+                           ],
+    "modules":  {
+                    "widgets":  [
+                                    {
+                                        "location":  "desk.ticket.detail.rightpanel",
+                                        "url":  "/app/widget.html",
+                                        "name":  "Boletos PagHiper",
+                                        "logo":  "/app/img/logo.png",
+                                        "icon":  "/app/img/icon.png"
+                                    }
+                                ]
+                },
+    "cspDomains":  {
+                       "connect-src":  [
+                                           "https://desk.zoho.com"
+                                       ]
+                   },
+    "connectors":  [
+                       {
+                           "connectionLinkName":  "zohodesk_conn",
+                           "connectionName":  "zohodesk_conn",
+                           "serviceName":  "zoho_desk",
+                           "userAccess":  true,
+                           "isUserDefinedService":  false,
+                           "sharedBy":  "643067220",
+                           "scope":  [
+                                         "Desk.settings.ALL",
+                                         "Desk.basic.ALL",
+                                         "Desk.tickets.ALL",
+                                         "Desk.contacts.ALL",
+                                         "Desk.tasks.ALL",
+                                         "Desk.extensions.ALL",
+                                         "Desk.calls.ALL",
+                                         "Desk.events.ALL",
+                                         "Desk.community.ALL",
+                                         "Desk.integrations.ALL",
+                                         "Desk.custommodule.ALL",
+                                         "Desk.modules.ALL",
+                                         "Desk.agents.ALL",
+                                         "Desk.accounts.ALL",
+                                         "Desk.departments.ALL",
+                                         "Desk.webhooks.ALL",
+                                         "Desk.extensions.settings.ALL",
+                                         "Desk.contracts.ALL",
+                                         "Desk.fields.ALL",
+                                         "Desk.channels.helpcenter.ALL",
+                                         "Desk.channels.email.ALL"
+                                     ]
+                       }
+                   ],
+    "config":  [
+                   {
+                       "name":  "cnpj_emissor",
+                       "displayName":  "CNPJ Emissor",
+                       "secure":  false,
+                       "type":  "text",
+                       "description":  "CNPJ do emissor do boleto.",
+                       "mandatory":  true,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "api_key",
+                       "displayName":  "API Key",
+                       "secure":  true,
+                       "type":  "text",
+                       "description":  "Chave API da PagHiper.",
+                       "mandatory":  true,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "token",
+                       "displayName":  "Token",
+                       "secure":  true,
+                       "type":  "text",
+                       "description":  "Token da conta PagHiper.",
+                       "mandatory":  true,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "dias_vencimento_padrao",
+                       "displayName":  "Dias de Vencimento Padrao",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Quantidade padrao de dias ate o vencimento.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "multa_atraso_percentual",
+                       "displayName":  "Multa por atraso (%)",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Percentual de multa por atraso.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "aplicar_juros_mensal",
+                       "displayName":  "Aplicar 1% de juros ao mes, 0,033% por dia de atraso",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, aplica juros de 1% ao mes, equivalente a 0,033% ao dia.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "dias_desconto_antecipado",
+                       "displayName":  "Dias para Desconto Antecipado",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Dias antes do vencimento em que o desconto antecipado sera aplicado.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "desconto_antecipado_percentual",
+                       "displayName":  "% Desconto Antecipado",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Percentual de desconto para pagamento antecipado.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "exibir_frase_fixa",
+                       "displayName":  "Exibir Frase Fixa",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, envia uma frase fixa nas instrucoes do boleto.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "dias_limite_apos_vencimento",
+                       "displayName":  "Dias Limite apos Vencimento",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Quantidade de dias em que o boleto pode ser pago apos o vencimento.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   }
+               ],
+    "moduleSupport":  false
 }

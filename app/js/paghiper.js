@@ -39,13 +39,21 @@ async function montarPayloadBoleto() {
   }
   return {
     valor_total: Number(valorTotal.toFixed(2)),
+    ticket_id: activeTicketId || await ZOHODESK.get("ticket.id"),
     cpf_cnpj: cpfCnpj,
     produtos,
     time_entries: timeEntries,
     pagador: await buscarDadosPagador(),
+    cnpj_emissor: (CONFIG_EXTENSAO?.cnpjEmissor || "").replace(/\D/g, ""),
+    api_key: CONFIG_EXTENSAO?.apiKey || "",
+    token: CONFIG_EXTENSAO?.token || "",
     dias_vencimento: parseInt(CONFIG_EXTENSAO?.diasVencimento || CONFIG_EXTENSAO?.diasVencimentoPadrao || 5, 10),
     multa: Number(CONFIG_EXTENSAO?.multa || 0),
-    juros: Boolean(CONFIG_EXTENSAO?.juros === true || CONFIG_EXTENSAO?.juros === "true")
+    juros: Boolean(CONFIG_EXTENSAO?.juros === true || CONFIG_EXTENSAO?.juros === "true"),
+    dias_desconto_antecipado: Number(CONFIG_EXTENSAO?.diasDescontoAntecipado || 0),
+    desconto_antecipado_percentual: Number(CONFIG_EXTENSAO?.descontoAntecipadoPercentual || 0),
+    exibir_frase_fixa: Boolean(CONFIG_EXTENSAO?.exibirFraseFixa === true || CONFIG_EXTENSAO?.exibirFraseFixa === "true"),
+    dias_limite_apos_vencimento: Number(CONFIG_EXTENSAO?.diasLimiteAposVencimento || 0)
   };
 }
 
@@ -241,12 +249,17 @@ async function cancelarBoleto() {
 }
 
 async function dispararOperacaoBoleto(funcao, payload) {
+  const payloadComConfig = {
+    ...payload,
+    api_key: CONFIG_EXTENSAO?.apiKey || "",
+    token: CONFIG_EXTENSAO?.token || ""
+  };
   let resposta;
   try {
     resposta = await ZOHODESK.request({
       url: `customfunction:${funcao}`,
       type: "POST",
-      postBody: JSON.stringify(payload),
+      postBody: JSON.stringify(payloadComConfig),
       contentType: "application/json",
       headers: { orgId: portalOrgId },
       connectionLinkName: "zohodesk_conn"
