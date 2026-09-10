@@ -10,18 +10,27 @@
 
   <!-- Tela de Carregamento Técnico -->
   <div id="loader-screen" class="widget-container">
-    <div class="spinner"></div>
-    <p id="status-loader" class="status-text">Validando ambiente técnico...</p>
+    <div class="loader-card">
+      <div class="spinner"></div>
+      <p id="status-loader" class="status-text">Validando ambiente tecnico...</p>
+    </div>
   </div>
 
   <!-- Tela Principal do Plugin (Navegação por Abas) -->
   <div id="main-app-container" class="widget-container" style="display: none;">
+    <header class="app-header">
+      <div>
+        <p class="app-kicker">PagHiper</p>
+        <h1>Boletos Desk</h1>
+      </div>
+      <span class="app-badge">Ativo</span>
+    </header>
     
     <!-- Navegação de Abas -->
     <div class="tab-header">
-      <button class="tab-btn active" onclick="switchTab('modelo-b', event)">Modelo B (Produtos)</button>
-      <button class="tab-btn" onclick="switchTab('modelo-c', event)">Modelo C (Horas)</button>
-      <button class="tab-btn" onclick="switchTab('diagnostico', event)">Diagnóstico API</button>
+      <button id="tab-btn-modelo-b" class="tab-btn active" onclick="switchTab('modelo-b', event)">Produtos</button>
+      <button id="tab-btn-modelo-c" class="tab-btn" onclick="switchTab('modelo-c', event)">Horas</button>
+      <button id="tab-btn-diagnostico" class="tab-btn debug-only" onclick="switchTab('diagnostico', event)">Diagnostico</button>
     </div>
 
     <div id="banner-erro-config" class="banner-erro" style="display:none;"></div>
@@ -68,7 +77,7 @@
       </div>
     </div>
 
-    <div id="tab-diagnostico" class="tab-content">
+    <div id="tab-diagnostico" class="tab-content debug-only">
       <div class="container-boleto">
         <h3>Diagnóstico da API do Desk</h3>
         <div class="campo-form">
@@ -114,7 +123,7 @@
       </div>
 
       <div id="status-emissao" class="status-emissao" style="display:none;"></div>
-      <div class="campo-form">
+      <div class="campo-form debug-panel">
         <label for="diagnostico-emissao-json">Diagnostico da emissao</label>
         <pre id="diagnostico-emissao-json" class="diagnostico-resultado">Nenhuma emissao executada.</pre>
       </div>
@@ -123,11 +132,11 @@
   </div>
 
   <!-- Scripts -->
-  <script type="text/javascript" src="js/products.js?v=20260910-2055"></script>
-  <script type="text/javascript" src="js/contracts.js?v=20260910-2055"></script>
-  <script type="text/javascript" src="js/paghiper.js?v=20260910-2055"></script>
-  <script type="text/javascript" src="js/diagnostico.js?v=20260910-2055"></script>
-  <script type="text/javascript" src="js/extension.js?v=20260910-2055"></script>
+  <script type="text/javascript" src="js/products.js?v=20260910-2135"></script>
+  <script type="text/javascript" src="js/contracts.js?v=20260910-2135"></script>
+  <script type="text/javascript" src="js/paghiper.js?v=20260910-2135"></script>
+  <script type="text/javascript" src="js/diagnostico.js?v=20260910-2135"></script>
+  <script type="text/javascript" src="js/extension.js?v=20260910-2135"></script>
 
   <!-- Lógica de controle de Abas -->
   <script>

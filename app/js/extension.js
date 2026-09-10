@@ -96,6 +96,7 @@ async function carregarConfigExtensao() {
     descontoAntecipadoPercentual: 0,
     exibirFraseFixa: false,
     diasLimiteAposVencimento: 0,
+    exibirDebugCliente: false,
     modeloCTarifaPropria: false,
     modeloBAutoSelecionar: false
   };
@@ -117,7 +118,8 @@ async function carregarConfigExtensao() {
       diasDescontoAntecipado: Number(obterPrimeiroConfig(rawConfig, ["dias_desconto_antecipado", "diasDescontoAntecipado"]) || defaults.diasDescontoAntecipado),
       descontoAntecipadoPercentual: Number(obterPrimeiroConfig(rawConfig, ["desconto_antecipado_percentual", "descontoAntecipadoPercentual"]) || defaults.descontoAntecipadoPercentual),
       exibirFraseFixa: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_frase_fixa", "exibirFraseFixa"])),
-      diasLimiteAposVencimento: Number(obterPrimeiroConfig(rawConfig, ["dias_limite_apos_vencimento", "diasLimiteAposVencimento"]) || defaults.diasLimiteAposVencimento)
+      diasLimiteAposVencimento: Number(obterPrimeiroConfig(rawConfig, ["dias_limite_apos_vencimento", "diasLimiteAposVencimento"]) || defaults.diasLimiteAposVencimento),
+      exibirDebugCliente: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_debug_cliente", "exibirDebugCliente"]))
     };
   } catch (error) {
     console.warn("[PagHiper] Config params indisponiveis; usando padrao:", error);
@@ -375,7 +377,23 @@ async function createFieldInZoho(moduleName, fieldConfig) {
 function loadWidgetMainScreen() {
   document.getElementById("loader-screen").style.display = "none";
   document.getElementById("main-app-container").style.display = "block";
+  aplicarPreferenciasInterface();
   inicializarTelaProdutos();
+}
+
+function aplicarPreferenciasInterface() {
+  const mostrarDebug = CONFIG_EXTENSAO?.exibirDebugCliente === true ||
+    CONFIG_EXTENSAO?.exibirDebugCliente === "true";
+
+  document.body.classList.toggle("debug-visivel", mostrarDebug);
+  document.body.classList.toggle("debug-oculto", !mostrarDebug);
+
+  if (!mostrarDebug && typeof activeTab !== "undefined" && activeTab === "diagnostico") {
+    const tabModeloB = document.getElementById("tab-btn-modelo-b");
+    if (tabModeloB && typeof switchTab === "function") {
+      switchTab("modelo-b", { target: tabModeloB });
+    }
+  }
 }
 
 function updateUIStatus(elementId, text) {

@@ -24,6 +24,7 @@ async function inicializarTelaProdutos() {
         diasVencimento: 5,
         multa: 0,
         juros: false,
+        exibirDebugCliente: false,
         modeloCTarifaPropria: false,
         modeloBAutoSelecionar: false
       };
