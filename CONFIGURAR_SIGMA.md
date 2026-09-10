@@ -9,9 +9,9 @@ Por isso, quando subir um novo `dist/BoletoHibridoPagHiperDesk.zip`, faca nesta 
 1. Suba/atualize o ZIP da extensao.
 2. Abra a extensao no Sigma.
 3. Va em `Extension Details > Functions`.
-4. Associe a function existente `gerarBoletoPagHiper`.
-5. Escolha a versao publicada correta da function.
-6. Copie a REST API gerada nessa associacao.
+4. Associe as functions existentes `gerarBoletoPagHiper`, `consultarBoletoPagHiper` e `cancelarBoletoPagHiper`.
+5. Escolha a versao publicada correta de cada function.
+6. Copie a REST API gerada em cada associacao.
 7. Atualize no codigo apenas se o dominio, UUID ou versao mudarem.
 
 Nao crie uma function nova a cada upload. Se o codigo Deluge mudar, crie uma nova versao da mesma function e associe essa versao na extensao.
@@ -25,19 +25,51 @@ No entry found in plugin-manifest whiteListedDomains for requested URL
 ## O que precisa existir no Sigma
 
 1. Crie uma function DRE chamada `gerarBoletoPagHiper`.
+   - Return Type: `String`
+   - Nao use Return Type `Void`, senao o Sigma mostra `VOID function can not return any value`.
 2. Cole o conteudo de `app/server/source/latest/gerarBoletoPagHiper.dre`.
-3. Salve e publique a function.
-4. Na extensao do Sigma, va em `Extension Details > Functions > Associate Function`.
-5. Associe `gerarBoletoPagHiper` escolhendo uma versao publicada especifica, por exemplo `1`.
-6. Evite `${LATEST}` durante o desenvolvimento, porque o guia informa que o Rest API pode nao ficar utilizavel ate a extensao ser publicada.
-7. Confirme que apareceu o link na coluna `Rest API`.
+3. Crie uma function DRE chamada `consultarBoletoPagHiper`.
+   - Return Type: `String`
+   - Nao use Return Type `Void`, senao o Sigma mostra `VOID function can not return any value`.
+4. Cole o conteudo de `app/server/source/latest/consultarBoletoPagHiper.dre`.
+5. Crie uma function DRE chamada `cancelarBoletoPagHiper`.
+   - Return Type: `String`
+   - Nao use Return Type `Void`, senao o Sigma mostra `VOID function can not return any value`.
+6. Cole o conteudo de `app/server/source/latest/cancelarBoletoPagHiper.dre`.
+7. Salve e publique as functions.
+8. Na extensao do Sigma, va em `Extension Details > Functions > Associate Function`.
+9. Associe `gerarBoletoPagHiper`, `consultarBoletoPagHiper` e `cancelarBoletoPagHiper`, sempre escolhendo uma versao publicada especifica.
+10. Evite `${LATEST}` durante o desenvolvimento, porque o guia informa que o Rest API pode nao ficar utilizavel ate a extensao ser publicada.
+11. Confirme que apareceu o link na coluna `Rest API`.
 
 O widget monta a Execution URL com:
 
 ```text
 sigma_app_uuid=<uuid da extensao>
 sigma_function_uuid=5297c382-4918-4fbf-9279-92aeb2d166cf
-sigma_function_version=6
+sigma_function_version=7
+integ_scope_id=<org id do Desk>
+app_install_id={{sigmaInstallId}}
+encapiKey={{enCapApiKey}}
+```
+
+Para cancelar boleto, o widget monta a Execution URL com:
+
+```text
+sigma_app_uuid=<uuid da extensao>
+sigma_function_uuid=640ade47-2006-4e66-9800-1b80a5857205
+sigma_function_version=2
+integ_scope_id=<org id do Desk>
+app_install_id={{sigmaInstallId}}
+encapiKey={{enCapApiKey}}
+```
+
+Para consultar boleto, depois de associar a function no Sigma, copie a REST API e preencha no codigo:
+
+```text
+sigma_app_uuid=<uuid da extensao>
+sigma_function_uuid=59846e17-1d27-41a1-b6d7-576f10b8b9de
+sigma_function_version=1
 integ_scope_id=<org id do Desk>
 app_install_id={{sigmaInstallId}}
 encapiKey={{enCapApiKey}}

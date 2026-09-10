@@ -1,68 +1,167 @@
+// Sigma: crie/edite esta function com Return Type = String, nao Void.
+// A Execution API com custom_response=true precisa retornar customResponse.
+
 response = Map();
-transactionId = input.get("transaction_id");
-motivo = input.get("motivo");
-apiKey = input.get("api_key");
-token = input.get("token");
-ambiente = "Producao";
-if (transactionId == null || transactionId == "" || motivo == null || motivo == "") {
-    response.put("erro", "dados_cancelamento_obrigatorios");
-    response.put("mensagemAmigavel", "Boleto ID e motivo do cancelamento sao obrigatorios.");
-    return response;
-}
-if (apiKey == null || apiKey == "" || token == null || token == "") {
-    configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
-    if (configList.get("data").size() > 0) {
-        config = configList.get("data").get(0);
-        if (apiKey == null || apiKey == "") {
-            apiKey = config.get("apiKey");
-        }
-        if (apiKey == null || apiKey == "") {
-            apiKey = config.get("cf_apiKey");
-        }
-        if (token == null || token == "") {
-            token = config.get("token");
-        }
-        if (token == null || token == "") {
-            token = config.get("cf_token");
-        }
-        if (config.get("ambientePagHiper") != null) {
-            ambiente = config.get("ambientePagHiper");
-        }
-        if (config.get("cf_ambientePagHiper") != null) {
-            ambiente = config.get("cf_ambientePagHiper");
-        }
+debug = Map();
+
+requestData = Map();
+payload = null;
+try {
+    requestData = data;
+    payload = requestData.get("payload");
+} catch (entradaError) {
+    debug.put("entrada_normalizada", "data nao chegou como Map");
+    debug.put("entrada_normalizada_erro", entradaError.toString());
+    try {
+        requestData = data.toMap();
+        payload = requestData.get("payload");
+    } catch (jsonEntradaError) {
+        requestData = Map();
+        requestData.put("payload", data);
+        payload = data;
+        debug.put("entrada_to_map_erro", jsonEntradaError.toString());
     }
 }
+
+if (payload == null) {
+    payload = requestData.get("data");
+}
+if (payload != null) {
+    try {
+        payload = payload.toMap();
+    } catch (payloadMapError) {
+        debug.put("payload_ja_map_ou_nao_convertido", payloadMapError.toString());
+    }
+}
+if (payload == null) {
+    payload = requestData;
+}
+
+transactionId = payload.get("transaction_id");
+apiKey = payload.get("api_key");
+token = payload.get("token");
+motivo = payload.get("motivo");
+
+debug.put("payload_detectado", payload != null);
+debug.put("request_method", requestData.get("request_method"));
+debug.put("org_id", requestData.get("integ_scope_id"));
+debug.put("service_app_id", requestData.get("service_app_id"));
+debug.put("sigma_execution_domain", requestData.get("sigma_execution_domain"));
+debug.put("transaction_id", transactionId);
+debug.put("motivo_recebido", motivo != null && motivo != "");
+
+apiKeyIndex = -1;
+if (apiKey != null) {
+    apiKey = apiKey.toString().trim();
+    apiKeyLower = apiKey.toLowerCase();
+    apiKeyIndex = apiKeyLower.indexOf("apk_");
+    if (apiKeyIndex > 0) {
+        apiKey = apiKey.subString(apiKeyIndex, apiKey.length());
+    }
+    if (apiKey.startsWith("APK_")) {
+        apiKey = "apk_" + apiKey.subString(4, apiKey.length());
+    }
+}
+if (token != null) {
+    token = token.toString().trim();
+}
+
+credenciaisDebug = Map();
+credenciaisDebug.put("api_key_preenchida", apiKey != null && apiKey != "");
+credenciaisDebug.put("token_preenchido", token != null && token != "");
+if (apiKey != null) {
+    credenciaisDebug.put("api_key_tamanho", apiKey.length());
+    credenciaisDebug.put("api_key_comeca_com_apk", apiKey.startsWith("apk_"));
+    credenciaisDebug.put("api_key_posicao_apk_bruto", apiKeyIndex);
+}
+if (token != null) {
+    credenciaisDebug.put("token_tamanho", token.length());
+    credenciaisDebug.put("token_comeca_com_apk", token.startsWith("apk_"));
+}
+debug.put("credenciais_paghiper", credenciaisDebug);
+
+if (transactionId == null || transactionId == "") {
+    response.put("erro", "boleto_id_obrigatorio");
+    response.put("mensagemAmigavel", "Informe o ID do boleto antes de cancelar.");
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
+}
+
 if (apiKey == null || apiKey == "" || token == null || token == "") {
     response.put("erro", "plugin_nao_configurado");
     response.put("mensagemAmigavel", "Configure API Key e Token da PagHiper nas configuracoes da extensao.");
-    return response;
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
 }
-endpoint = "https://api.paghiper.com/transaction/cancel/";
-if (ambiente == "Sandbox") {
-    endpoint = "https://sandbox.paghiper.com/transaction/cancel/";
+
+if (apiKey.startsWith("apk_") == false) {
+    response.put("erro", "api_key_paghiper_invalida");
+    response.put("mensagemAmigavel", "A API Key da PagHiper precisa comecar com apk_.");
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
 }
-payload = Map();
-payload.put("apiKey", apiKey);
-payload.put("token", token);
-payload.put("transaction_id", transactionId);
-payload.put("reason", motivo);
+
+payloadPagHiper = Map();
+payloadPagHiper.put("apiKey", apiKey);
+payloadPagHiper.put("token", token);
+payloadPagHiper.put("status", "canceled");
+payloadPagHiper.put("transaction_id", transactionId);
+
+debugPayload = Map();
+debugPayload.putAll(payloadPagHiper);
+debugPayload.put("apiKey", "****");
+debugPayload.put("token", "****");
+debug.put("paghiper_endpoint", "https://api.paghiper.com/transaction/cancel/");
+debug.put("paghiper_payload", debugPayload);
+
 try {
-    apiResponse = invokeurl [
-        url: endpoint
+    respostaApi = invokeurl [
+        url: "https://api.paghiper.com/transaction/cancel/"
         type: POST
-        parameters: payload.toString()
-        headers: {"Content-Type":"application/json;charset=UTF-8"}
+        parameters: payloadPagHiper.toString()
+        headers: {"Accept":"application/json"}
+        content-type: "application/json"
     ];
-    result = apiResponse.toMap();
-    if (result.containsKey("response_errors")) {
-        response.put("erro", "recusa_gateway");
-        response.put("mensagemAmigavel", "A PagHiper recusou o cancelamento.");
-    } else {
+    respostaMap = respostaApi.toMap();
+    debug.put("paghiper_response", respostaMap);
+
+    cancellationRequest = respostaMap.get("cancellation_request");
+    if (cancellationRequest != null && cancellationRequest.get("result") == "success") {
         response.put("status", "canceled");
+        response.put("transaction_id", transactionId);
+        response.put("mensagemAmigavel", ifnull(cancellationRequest.get("response_message"), "Boleto cancelado com sucesso."));
+    } else if (cancellationRequest != null) {
+        response.put("erro", "recusa_gateway");
+        response.put("mensagemAmigavel", "A PagHiper recusou o cancelamento: " + ifnull(cancellationRequest.get("response_message"), "verifique o status do boleto."));
+    } else if (respostaMap.containsKey("response_errors")) {
+        erroObj = respostaMap.get("response_errors");
+        response.put("erro", "recusa_gateway");
+        response.put("mensagemAmigavel", "A PagHiper recusou o cancelamento: " + ifnull(erroObj.get("message"), "verifique o status do boleto."));
+    } else {
+        response.put("erro", "resposta_invalida");
+        response.put("mensagemAmigavel", "Retorno invalido da PagHiper ao cancelar boleto.");
     }
 } catch (e) {
     response.put("erro", "falha_comunicacao");
-    response.put("mensagemAmigavel", "Falha de conexao com a PagHiper.");
+    response.put("mensagemAmigavel", "Falha de conexao com a PagHiper ao cancelar boleto.");
+    response.put("detalhe_tecnico", e.toString());
 }
-return response;
+
+response.put("debug", debug);
+customResponse = Map();
+customResponse.put("statusCode", 200);
+customResponse.put("contentType", "application/json");
+customResponse.put("message", response);
+return customResponse;

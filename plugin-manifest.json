@@ -160,6 +160,16 @@
                        "mandatory":  false,
                        "userdefined":  true,
                        "authType":  "org"
+                   },
+                   {
+                       "name":  "exibir_debug_cliente",
+                       "displayName":  "Exibir diagnostico/debug no widget",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, mostra a aba e o painel de diagnostico no widget.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
                    }
                ],
     "moduleSupport":  false

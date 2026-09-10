@@ -1,3 +1,6 @@
+// Sigma: crie/edite esta function com Return Type = String, nao Void.
+// A Execution API com custom_response=true precisa retornar customResponse.
+
 response = Map();
 debug = Map();
 
@@ -445,11 +448,11 @@ try {
 if (response.containsKey("erro") == false && ticketId != null && ticketId != "") {
     try {
         cf = Map();
-        cf.put("cf_boleto_id", response.get("transaction_id"));
+        cf.put("cf_id_do_boleto", response.get("transaction_id"));
         cf.put("cf_status_boleto", response.get("status"));
-        cf.put("cf_link_boleto", response.get("url_slip"));
+        cf.put("cf_link_do_boleto", response.get("url_slip"));
         cf.put("cf_linha_digitavel", response.get("digitable_line"));
-        cf.put("cf_valor_boleto", valorTotal);
+        cf.put("cf_valor_do_servico", valorTotal);
         updatePayload = Map();
         updatePayload.put("cf", cf);
         updateTicket = invokeurl [

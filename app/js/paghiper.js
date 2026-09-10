@@ -87,8 +87,20 @@ function isSigmaMissingInputParameter(envelope) {
   return envelope?.statusCode === 412 && String(envelope.message || "").includes("Input parameter is missing");
 }
 
+function isSigmaRetryableInputEnvelope(envelope) {
+  const message = String(envelope?.message || "");
+  return envelope?.statusCode === 412 && (
+    message.includes("Input parameter") ||
+    message.includes("Function not found for given input")
+  );
+}
+
 const GERAR_BOLETO_SIGMA_FUNCTION_UUID = "5297c382-4918-4fbf-9279-92aeb2d166cf";
-const GERAR_BOLETO_SIGMA_FUNCTION_VERSION = "6";
+const GERAR_BOLETO_SIGMA_FUNCTION_VERSION = "7";
+const CONSULTAR_BOLETO_SIGMA_FUNCTION_UUID = "59846e17-1d27-41a1-b6d7-576f10b8b9de";
+const CONSULTAR_BOLETO_SIGMA_FUNCTION_VERSION = "1";
+const CANCELAR_BOLETO_SIGMA_FUNCTION_UUID = "640ade47-2006-4e66-9800-1b80a5857205";
+const CANCELAR_BOLETO_SIGMA_FUNCTION_VERSION = "2";
 const GERAR_BOLETO_SIGMA_DOMAIN_FALLBACK = "4180c9fa-bd12-48bd-b4bb-736116bc90ad.sigmaexecution.com";
 
 function obterSigmaExecutionDomain() {
@@ -113,6 +125,57 @@ function getGerarBoletoFunctionUrl() {
     "&custom_response=true" +
     "&auth_type=apikey" +
     "&encapiKey={{enCapApiKey}}";
+}
+
+function getCancelarBoletoFunctionUrl() {
+  return `https://${obterSigmaExecutionDomain()}/workspace/invokefunction` +
+    `?sigma_function_uuid=${CANCELAR_BOLETO_SIGMA_FUNCTION_UUID}` +
+    `&sigma_function_version=${CANCELAR_BOLETO_SIGMA_FUNCTION_VERSION}` +
+    `&integ_scope_id=${portalOrgId || ""}` +
+    "&app_install_id={{sigmaInstallId}}" +
+    "&custom_response=true" +
+    "&auth_type=apikey" +
+    "&encapiKey={{enCapApiKey}}";
+}
+
+function getConsultarBoletoFunctionUrl() {
+  if (!CONSULTAR_BOLETO_SIGMA_FUNCTION_UUID || !CONSULTAR_BOLETO_SIGMA_FUNCTION_VERSION) {
+    return null;
+  }
+
+  return `https://${obterSigmaExecutionDomain()}/workspace/invokefunction` +
+    `?sigma_function_uuid=${CONSULTAR_BOLETO_SIGMA_FUNCTION_UUID}` +
+    `&sigma_function_version=${CONSULTAR_BOLETO_SIGMA_FUNCTION_VERSION}` +
+    `&integ_scope_id=${portalOrgId || ""}` +
+    "&app_install_id={{sigmaInstallId}}" +
+    "&custom_response=true" +
+    "&auth_type=apikey" +
+    "&encapiKey={{enCapApiKey}}";
+}
+
+function getOperacaoBoletoFunctionUrl(funcao) {
+  if (funcao === "cancelarBoletoPagHiper") return getCancelarBoletoFunctionUrl();
+  if (funcao === "consultarBoletoPagHiper") return getConsultarBoletoFunctionUrl();
+  return null;
+}
+
+function getOperacaoBoletoSigmaConfig(funcao) {
+  if (funcao === "cancelarBoletoPagHiper") {
+    return {
+      sigmaFunctionUuid: CANCELAR_BOLETO_SIGMA_FUNCTION_UUID,
+      sigmaFunctionVersion: CANCELAR_BOLETO_SIGMA_FUNCTION_VERSION
+    };
+  }
+  if (funcao === "consultarBoletoPagHiper") {
+    return {
+      sigmaFunctionUuid: CONSULTAR_BOLETO_SIGMA_FUNCTION_UUID || null,
+      sigmaFunctionVersion: CONSULTAR_BOLETO_SIGMA_FUNCTION_VERSION || null
+    };
+  }
+  return {
+    sigmaFunctionUuid: null,
+    sigmaFunctionVersion: null
+  };
 }
 
 async function tratarCliqueGerarBoleto() {
@@ -453,7 +516,7 @@ async function tentarFormatosDeArgumentoSigma(functionUrl, payload, envelopeOrig
       dicaSigma: variante.dicaSigma
     });
 
-    if (!isSigmaInputParameterMismatch(envelope)) {
+    if (!isSigmaRetryableInputEnvelope(envelope)) {
       return envelope;
     }
   }
@@ -568,11 +631,11 @@ async function tratarRespostaSucesso(resultado) {
       type: "PATCH",
       postBody: {
         cf: {
-          cf_boleto_id: resultado.transaction_id || "",
+          cf_id_do_boleto: resultado.transaction_id || "",
           cf_status_boleto: resultado.status || "pending",
-          cf_link_boleto: resultado.url_slip || "",
+          cf_link_do_boleto: resultado.url_slip || "",
           cf_linha_digitavel: resultado.digitable_line || "",
-          cf_valor_boleto: resultado.valor_total
+          cf_valor_do_servico: resultado.valor_total
         }
       },
       contentType: "application/json",
@@ -584,6 +647,7 @@ async function tratarRespostaSucesso(resultado) {
       connectionLinkName: "zohodesk_conn"
     });
     await registrarReferenciasTimeEntries(resultado.transaction_id || "");
+    preencherBoletoIdManual(resultado.transaction_id || "");
     await adicionarComentarioInterno(
       ticketId,
       `Boleto PagHiper emitido: ${resultado.transaction_id || "sem ID"} | ` +
@@ -648,6 +712,16 @@ async function adicionarComentarioInterno(ticketId, content) {
 
 async function obterBoletoId() {
   const ticketId = activeTicketId || await getSdkValue("ticket.id");
+  const boletoIdManual = obterBoletoIdManual();
+  if (boletoIdManual) {
+    registrarDiagnosticoEmissao("Boleto ID informado manualmente", {
+      ticketId,
+      boletoId: boletoIdManual
+    });
+    validarTransactionIdPagHiper(boletoIdManual);
+    return { ticketId, boletoId: boletoIdManual };
+  }
+
   const resposta = await ZOHODESK.request({
     url: getDeskApiUrl(`/api/v1/tickets/${ticketId}`),
     type: "GET",
@@ -656,24 +730,65 @@ async function obterBoletoId() {
       "Content-Type": "application/json",
       orgId: portalOrgId
     },
-    data: { orgId: portalOrgId },
+      data: { orgId: portalOrgId },
     connectionLinkName: "zohodesk_conn"
   });
-  const ticket = typeof resposta === "string" ? JSON.parse(resposta) : resposta;
-  const boletoId = ticket.cf?.cf_boleto_id || ticket.cf_boleto_id;
-  if (!boletoId) throw new Error("Este ticket nao possui Boleto ID.");
-  return { ticketId, boletoId };
+  registrarDiagnosticoEmissao("Resposta bruta ao buscar boleto ID no ticket", resposta);
+  const ticket = parseDeskApiResponse(resposta);
+  const boletoId = ticket.cf?.cf_id_do_boleto ||
+    ticket.cf?.cf_boleto_id ||
+    ticket.cf?.cf_id_boleto ||
+    ticket.cf_id_do_boleto ||
+    ticket.cf_boleto_id ||
+    ticket.cf_id_boleto ||
+    ticket.customFields?.["ID do Boleto"] ||
+    ticket.customFields?.["Boleto ID"];
+
+  if (boletoId) {
+    preencherBoletoIdManual(boletoId);
+    validarTransactionIdPagHiper(boletoId);
+    return { ticketId, boletoId };
+  }
+
+  registrarDiagnosticoEmissao("Boleto ID nao encontrado no ticket", {
+    ticketId,
+    camposCf: ticket.cf || {},
+    customFields: ticket.customFields || {},
+    acao: "Informe o transaction_id no campo ID do boleto PagHiper e tente novamente."
+  });
+  throw new Error("Este ticket nao possui Boleto ID. Informe o ID do boleto PagHiper no campo manual e tente novamente.");
+}
+
+function obterBoletoIdManual() {
+  return String(document.getElementById("input-boleto-id")?.value || "")
+    .trim()
+    .replace(/\s+/g, "");
+}
+
+function validarTransactionIdPagHiper(boletoId) {
+  if (/^[A-Za-z0-9]{16}$/.test(String(boletoId || ""))) return;
+  throw new Error("O ID do boleto PagHiper deve ser o transaction_id de 16 caracteres. Exemplo: 0996K2QO3B5C3T26. Nao use o numero do ticket, como #203435ZD.");
+}
+
+function preencherBoletoIdManual(boletoId) {
+  const input = document.getElementById("input-boleto-id");
+  if (input && boletoId) input.value = boletoId;
 }
 
 async function consultarBoleto() {
   const button = document.getElementById("btn-consultar-boleto");
   if (button) button.disabled = true;
+  limparDiagnosticoEmissao();
   try {
     const { ticketId, boletoId } = await obterBoletoId();
     exibirStatus("info", "Consultando status na PagHiper...");
-    const resultado = await dispararOperacaoBoleto("consultarBoletoPagHiper", { transaction_id: boletoId });
-    await atualizarStatusTicket(ticketId, resultado.status || "unknown");
-    exibirStatus("sucesso", `Status atualizado: ${resultado.status || "desconhecido"}.`);
+    const resultado = await dispararOperacaoBoleto("consultarBoletoPagHiper", {
+      transaction_id: boletoId,
+      ticket_id: ticketId
+    });
+    await atualizarDadosBoletoTicket(ticketId, resultado);
+    preencherBoletoIdManual(resultado.transaction_id || boletoId);
+    exibirStatus("sucesso", resultado.mensagemAmigavel || `Status atualizado: ${resultado.status || "desconhecido"}.`);
   } catch (erro) {
     exibirStatus("erro", erro.mensagemAmigavel || erro.message || "Nao foi possivel consultar o boleto.");
   } finally {
@@ -691,7 +806,8 @@ async function cancelarBoleto() {
     exibirStatus("info", "Cancelando boleto na PagHiper...");
     const resultado = await dispararOperacaoBoleto("cancelarBoletoPagHiper", {
       transaction_id: boletoId,
-      motivo: motivo.trim()
+      motivo: motivo.trim(),
+      ticket_id: ticketId
     });
     await atualizarStatusTicket(ticketId, resultado.status || "canceled");
     await limparReferenciasTimeEntries();
@@ -726,28 +842,69 @@ async function cancelarBoleto() {
 async function dispararOperacaoBoleto(funcao, payload) {
   const payloadComConfig = {
     ...payload,
+    org_id: portalOrgId,
     api_key: CONFIG_EXTENSAO?.apiKey || "",
     token: CONFIG_EXTENSAO?.token || ""
   };
+  const functionUrl = getOperacaoBoletoFunctionUrl(funcao);
+  const sigmaConfig = getOperacaoBoletoSigmaConfig(funcao);
+  const requestObj = functionUrl
+    ? {
+        url: functionUrl,
+        type: "POST",
+        postBody: payloadComConfig,
+        contentType: "application/json",
+        headers: {
+          "Content-Type": "application/json",
+          orgId: portalOrgId
+        }
+      }
+    : {
+        url: `customfunction:${funcao}`,
+        type: "POST",
+        postBody: payloadComConfig,
+        contentType: "application/json",
+        headers: {
+          "Content-Type": "application/json",
+          orgId: portalOrgId
+        },
+        data: { orgId: portalOrgId },
+        connectionLinkName: "zohodesk_conn"
+      };
+  registrarDiagnosticoEmissao(`Objeto enviado para ${funcao}`, {
+    ...requestObj,
+    ...sigmaConfig,
+    temPlaceholders: functionUrl ? functionUrl.includes("{{sigmaInstallId}}") && functionUrl.includes("{{enCapApiKey}}") : false
+  });
   let resposta;
   try {
-    resposta = await ZOHODESK.request({
-      url: `customfunction:${funcao}`,
-      type: "POST",
-      postBody: payloadComConfig,
-      contentType: "application/json",
-      headers: {
-        "Content-Type": "application/json",
-        orgId: portalOrgId
-      },
-      data: { orgId: portalOrgId },
-      connectionLinkName: "zohodesk_conn"
-    });
+    resposta = await requestComTimeout(
+      () => ZOHODESK.request(requestObj),
+      `Timeout ao chamar ${funcao}`,
+      30000
+    );
   } catch (error) {
-    throw new Error(`A function ${funcao} nao esta disponivel no ambiente local.`);
+    registrarDiagnosticoEmissao(`Erro bruto ao chamar ${funcao}`, {
+      erro: serializarErroEmissao(error),
+      request: requestObj
+    });
+    throw new Error(`A function ${funcao} nao esta disponivel no ambiente local ou a REST API nao esta whitelistada/associada.`);
   }
   registrarDiagnosticoEmissao("Resposta bruta da customfunction", resposta);
-  const dados = parseDeskApiResponse(resposta);
+  let envelope = parseRequestEnvelope(resposta);
+  registrarDiagnosticoEmissao("Envelope parseado da customfunction", envelope);
+  if (functionUrl && isSigmaRetryableInputEnvelope(envelope)) {
+    registrarDiagnosticoEmissao("Sigma recusou a chamada inicial por input", {
+      mensagemSigma: envelope.message,
+      statusCode: envelope.statusCode,
+      acao: "Tentando formatos alternativos de payload para esta function."
+    });
+    envelope = await tentarFormatosDeArgumentoSigma(functionUrl, payloadComConfig, envelope);
+  }
+  if (envelope.statusCode && Number(envelope.statusCode) >= 400) {
+    throw new Error(envelope.message || `A function retornou HTTP ${envelope.statusCode}.`);
+  }
+  const dados = envelope.body;
   registrarDiagnosticoEmissao("Resposta parseada da customfunction", dados);
   if (dados?.erro) {
     const erro = new Error(dados.erro);
@@ -757,11 +914,57 @@ async function dispararOperacaoBoleto(funcao, payload) {
   return dados;
 }
 
-async function atualizarStatusTicket(ticketId, status) {
-  await ZOHODESK.request({
+function requestComTimeout(factory, message, timeoutMs) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      const error = new Error(`${message}: a Function nao respondeu em ${Math.round(timeoutMs / 1000)} segundos.`);
+      error.name = "TimeoutError";
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([factory(), timeout]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
+async function atualizarDadosBoletoTicket(ticketId, resultado) {
+  const boletoId = resultado.transaction_id || "";
+  const status = resultado.status || "unknown";
+  const camposPrincipais = {
+    cf_id_do_boleto: boletoId,
+    cf_status_boleto: status,
+    cf_link_do_boleto: resultado.url_slip || "",
+    cf_linha_digitavel: resultado.digitable_line || "",
+    cf_valor_do_servico: resultado.valor_total || 0
+  };
+
+  await atualizarCamposCustomizadosTicket(ticketId, camposPrincipais);
+
+  const camposExtras = {};
+  if (resultado.url_slip_pdf) camposExtras.cf_link_pdf_boleto = resultado.url_slip_pdf;
+  if (resultado.due_date) camposExtras.cf_vencimento_boleto = resultado.due_date;
+  if (resultado.status_date) camposExtras.cf_data_status_boleto = resultado.status_date;
+
+  if (Object.keys(camposExtras).length > 0) {
+    try {
+      await atualizarCamposCustomizadosTicket(ticketId, camposExtras);
+    } catch (error) {
+      registrarDiagnosticoEmissao("Campos extras de consulta nao foram atualizados", {
+        camposExtras,
+        erro: serializarErroEmissao(error),
+        observacao: "Crie os campos cf_link_pdf_boleto, cf_vencimento_boleto e cf_data_status_boleto no ticket se quiser armazenar esses dados."
+      });
+    }
+  }
+}
+
+async function atualizarCamposCustomizadosTicket(ticketId, camposCf) {
+  return ZOHODESK.request({
     url: getDeskApiUrl(`/api/v1/tickets/${ticketId}`),
     type: "PATCH",
-    postBody: { cf: { cf_status_boleto: status } },
+    postBody: { cf: camposCf },
     contentType: "application/json",
     headers: {
       "Content-Type": "application/json",
@@ -770,4 +973,8 @@ async function atualizarStatusTicket(ticketId, status) {
     data: { orgId: portalOrgId },
     connectionLinkName: "zohodesk_conn"
   });
+}
+
+async function atualizarStatusTicket(ticketId, status) {
+  await atualizarCamposCustomizadosTicket(ticketId, { cf_status_boleto: status });
 }

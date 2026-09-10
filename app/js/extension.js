@@ -13,11 +13,14 @@ const SCHEMA_GERAL_PROVISIONAMENTO = {
     { displayLabel: "Selecionar produtos automaticamente", type: "Checkbox", apiName: "cf_modeloBAutoSelecionar" }
   ],
   tickets: [
-    { displayLabel: "Boleto ID", type: "Text", apiName: "cf_boleto_id", maxLength: 100 },
+    { displayLabel: "ID do Boleto", type: "Text", apiName: "cf_id_do_boleto", maxLength: 100 },
     { displayLabel: "Status do Boleto", type: "Text", apiName: "cf_status_boleto", maxLength: 100 },
-    { displayLabel: "Link do Boleto", type: "Website", apiName: "cf_link_boleto", maxLength: 250 },
+    { displayLabel: "Link do Boleto", type: "Website", apiName: "cf_link_do_boleto", maxLength: 250 },
     { displayLabel: "Linha Digitável", type: "Text", apiName: "cf_linha_digitavel", maxLength: 100 },
-    { displayLabel: "Valor do Boleto", type: "Currency", apiName: "cf_valor_boleto" }
+    { displayLabel: "Valor do Serviço", type: "Currency", apiName: "cf_valor_do_servico" },
+    { displayLabel: "Link PDF do Boleto", type: "Website", apiName: "cf_link_pdf_boleto", maxLength: 250 },
+    { displayLabel: "Vencimento do Boleto", type: "Date", apiName: "cf_vencimento_boleto" },
+    { displayLabel: "Data Status Boleto", type: "Text", apiName: "cf_data_status_boleto", maxLength: 30 }
   ],
   contacts: [
     { displayLabel: "CPF/CNPJ", type: "Text", apiName: "cf_cpf_cnpj", maxLength: 18 },
