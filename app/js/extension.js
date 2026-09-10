@@ -38,6 +38,7 @@ let portalOrgId = null;
 let activeTicketId = null;
 let CONFIG_EXTENSAO = null;
 let deskDomainUrl = "https://desk.zoho.com";
+let appMeta = {};
 const DESK_CONNECTION_NAME = "zohodesk_conn";
 
 ZOHODESK.extension.onload().then(async function (App) {
@@ -51,8 +52,9 @@ ZOHODESK.extension.onload().then(async function (App) {
 });
 
 async function resolverContextoDesk(App) {
+  appMeta = App?.meta || {};
   activeTicketId = App?.model?.id || await getSdkValue("ticket.id");
-  deskDomainUrl = App?.meta?.deskDomainUrl || deskDomainUrl;
+  deskDomainUrl = appMeta?.deskDomainUrl || deskDomainUrl;
   deskDomainUrl = deskDomainUrl.replace(/\/$/, "");
 
   const portal = await getSdkValue("portal").catch(() => null);
@@ -98,19 +100,21 @@ async function carregarConfigExtensao() {
   try {
     const response = await getSdkValue("extension.config");
     const rawConfig = normalizarConfigParams(response);
+    const apiKeyBruta = obterPrimeiroConfig(rawConfig, ["api_key", "apikey", "apiKey", "cf_apiKey"]);
+    const tokenBruto = obterPrimeiroConfig(rawConfig, ["token", "cf_token"]);
 
     return {
       ...defaults,
-      cnpjEmissor: rawConfig.cnpj_emissor || defaults.cnpjEmissor,
-      apiKey: rawConfig.api_key || rawConfig.apikey || defaults.apiKey,
-      token: rawConfig.token || defaults.token,
-      diasVencimento: Number(rawConfig.dias_vencimento_padrao || rawConfig.dias_vencimento || defaults.diasVencimento),
-      multa: Number(rawConfig.multa_atraso_percentual || rawConfig.multa || defaults.multa),
-      juros: configParamMarcado(rawConfig.aplicar_juros_mensal ?? rawConfig.juros),
-      diasDescontoAntecipado: Number(rawConfig.dias_desconto_antecipado || defaults.diasDescontoAntecipado),
-      descontoAntecipadoPercentual: Number(rawConfig.desconto_antecipado_percentual || defaults.descontoAntecipadoPercentual),
-      exibirFraseFixa: configParamMarcado(rawConfig.exibir_frase_fixa),
-      diasLimiteAposVencimento: Number(rawConfig.dias_limite_apos_vencimento || defaults.diasLimiteAposVencimento)
+      cnpjEmissor: obterPrimeiroConfig(rawConfig, ["cnpj_emissor", "cnpjEmissor"]) || defaults.cnpjEmissor,
+      apiKey: extrairApiKeyPagHiper(apiKeyBruta || defaults.apiKey),
+      token: limparCredencialPagHiper(tokenBruto || defaults.token),
+      diasVencimento: Number(obterPrimeiroConfig(rawConfig, ["dias_vencimento_padrao", "dias_vencimento", "diasVencimento"]) || defaults.diasVencimento),
+      multa: Number(obterPrimeiroConfig(rawConfig, ["multa_atraso_percentual", "multa"]) || defaults.multa),
+      juros: configParamMarcado(obterPrimeiroConfig(rawConfig, ["aplicar_juros_mensal", "juros"])),
+      diasDescontoAntecipado: Number(obterPrimeiroConfig(rawConfig, ["dias_desconto_antecipado", "diasDescontoAntecipado"]) || defaults.diasDescontoAntecipado),
+      descontoAntecipadoPercentual: Number(obterPrimeiroConfig(rawConfig, ["desconto_antecipado_percentual", "descontoAntecipadoPercentual"]) || defaults.descontoAntecipadoPercentual),
+      exibirFraseFixa: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_frase_fixa", "exibirFraseFixa"])),
+      diasLimiteAposVencimento: Number(obterPrimeiroConfig(rawConfig, ["dias_limite_apos_vencimento", "diasLimiteAposVencimento"]) || defaults.diasLimiteAposVencimento)
     };
   } catch (error) {
     console.warn("[PagHiper] Config params indisponiveis; usando padrao:", error);
@@ -122,12 +126,69 @@ function configParamMarcado(value) {
   return value === true || value === "true" || value === "on" || value === "1" || value === 1;
 }
 
+function obterPrimeiroConfig(rawConfig, nomes) {
+  for (const nome of nomes) {
+    const value = normalizarValorConfigParam(rawConfig?.[nome]);
+    if (value !== "" && value !== null && value !== undefined) return value;
+  }
+  return "";
+}
+
+function normalizarValorConfigParam(value) {
+  if (value === null || value === undefined) return "";
+
+  if (typeof value === "object") {
+    if ("value" in value) return normalizarValorConfigParam(value.value);
+    if ("defaultValue" in value) return normalizarValorConfigParam(value.defaultValue);
+    if ("selectedValue" in value) return normalizarValorConfigParam(value.selectedValue);
+    if ("text" in value) return normalizarValorConfigParam(value.text);
+    return "";
+  }
+
+  return typeof value === "string" ? value.trim() : value;
+}
+
+function limparCredencialPagHiper(value) {
+  return String(normalizarValorConfigParam(value) || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+}
+
+function extrairApiKeyPagHiper(value) {
+  const texto = limparCredencialPagHiper(value);
+  const match = texto.match(/apk_[A-Za-z0-9-]+/i);
+  if (!match) return texto;
+  const apiKey = match[0];
+  return /^APK_/.test(apiKey) ? `apk_${apiKey.slice(4)}` : apiKey;
+}
+
+function descreverCredenciaisPagHiper(config) {
+  const apiKeyBruta = limparCredencialPagHiper(config?.apiKey || "");
+  const apiKeyNormalizada = extrairApiKeyPagHiper(apiKeyBruta);
+  const token = limparCredencialPagHiper(config?.token || "");
+  const posicaoApk = apiKeyBruta.toLowerCase().indexOf("apk_");
+
+  return {
+    api_key_preenchida: apiKeyBruta.length > 0,
+    api_key_tamanho_bruto: apiKeyBruta.length,
+    api_key_apenas_mascara: /^\*+$/.test(apiKeyBruta),
+    api_key_contem_apk: posicaoApk >= 0,
+    api_key_posicao_apk: posicaoApk,
+    api_key_normalizada_comeca_com_apk: apiKeyNormalizada.toLowerCase().startsWith("apk_"),
+    token_preenchido: token.length > 0,
+    token_tamanho: token.length,
+    token_apenas_mascara: /^\*+$/.test(token),
+    token_contem_apk: token.toLowerCase().includes("apk_")
+  };
+}
+
 function normalizarConfigParams(configParams) {
   if (!configParams) return {};
 
   if (Array.isArray(configParams)) {
     return configParams.reduce((acc, item) => {
-      if (item?.name) acc[item.name] = item.value;
+      if (item?.name) acc[item.name] = normalizarValorConfigParam(item.value);
       return acc;
     }, {});
   }
@@ -146,24 +207,35 @@ function normalizarConfigParams(configParams) {
 }
 
 function getDeskApiUrl(path) {
-  return `https://desk.zoho.com${path}`;
+  return `${deskDomainUrl || "https://desk.zoho.com"}${path}`;
 }
 
 function parseDeskApiResponse(response) {
   let parsed = response;
-  if (typeof parsed === "string") parsed = JSON.parse(parsed);
+  if (typeof parsed === "string") parsed = parseJsonSePossivel(parsed);
   while (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
     if (parsed.response !== undefined) {
-      parsed = typeof parsed.response === "string" ? JSON.parse(parsed.response) : parsed.response;
+      parsed = typeof parsed.response === "string" ? parseJsonSePossivel(parsed.response) : parsed.response;
       continue;
     }
     if (parsed.statusMessage !== undefined) {
-      parsed = typeof parsed.statusMessage === "string" ? JSON.parse(parsed.statusMessage) : parsed.statusMessage;
+      parsed = typeof parsed.statusMessage === "string" ? parseJsonSePossivel(parsed.statusMessage) : parsed.statusMessage;
+      continue;
+    }
+    if (parsed.message !== undefined && Object.keys(parsed).length <= 4) {
+      parsed = typeof parsed.message === "string" ? parseJsonSePossivel(parsed.message) : parsed.message;
       continue;
     }
     break;
   }
   return parsed;
+}
+
+function parseJsonSePossivel(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed || !["{", "["].includes(trimmed[0])) return value;
+  return JSON.parse(trimmed);
 }
 
 async function inicializarTudoBasico() {
@@ -233,8 +305,13 @@ async function inicializarModuloConfiguracao() {
   const parsedRecords = parseDeskApiResponse(records);
   const record = parsedRecords?.data?.[0] || {};
   const config = { ...record, ...(record.cf || {}) };
+  const apiKey = extrairApiKeyPagHiper(config.apiKey ?? config.cf_apiKey ?? config.api_key ?? "");
+  const token = limparCredencialPagHiper(config.token ?? config.cf_token ?? "");
   return {
     ...config,
+    cnpjEmissor: config.cnpjEmissor ?? config.cnpj_emissor ?? config.cf_cnpjEmissor,
+    apiKey,
+    token,
     diasVencimento: config.diasVencimento ?? config.cf_diasVencimento,
     multa: config.multa ?? config.cf_multa,
     juros: config.juros ?? config.cf_juros,

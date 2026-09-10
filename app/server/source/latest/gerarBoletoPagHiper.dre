@@ -1,49 +1,314 @@
 response = Map();
+debug = Map();
 
-valorTotal = data.get("valor_total");
-cpfCnpj = data.get("cpf_cnpj");
-produtos = data.get("produtos");
-pagador = data.get("pagador");
-diasVencimento = data.get("dias_vencimento");
-multa = data.get("multa");
-juros = data.get("juros");
-cnpjEmissor = data.get("cnpj_emissor");
-apiKey = data.get("api_key");
-token = data.get("token");
-diasDescontoAntecipado = data.get("dias_desconto_antecipado");
-descontoAntecipadoPercentual = data.get("desconto_antecipado_percentual");
-exibirFraseFixa = data.get("exibir_frase_fixa");
-diasLimiteAposVencimento = data.get("dias_limite_apos_vencimento");
+requestData = Map();
+payload = null;
+try {
+    requestData = data;
+    payload = requestData.get("payload");
+} catch (entradaError) {
+    debug.put("entrada_normalizada", "data nao chegou como Map");
+    debug.put("entrada_normalizada_erro", entradaError.toString());
+    try {
+        requestData = data.toMap();
+        payload = requestData.get("payload");
+    } catch (jsonEntradaError) {
+        requestData = Map();
+        requestData.put("payload", data);
+        payload = data;
+        debug.put("entrada_to_map_erro", jsonEntradaError.toString());
+    }
+}
+
+if (payload == null) {
+    payload = requestData.get("data");
+}
+if (payload != null) {
+    try {
+        payload = payload.toMap();
+    } catch (payloadMapError) {
+        debug.put("payload_ja_map_ou_nao_convertido", payloadMapError.toString());
+    }
+}
+if (payload == null) {
+    payload = requestData;
+}
+
+orgId = requestData.get("integ_scope_id");
+if (orgId == null || orgId == "") {
+    orgId = payload.get("org_id");
+}
+
+serviceDomain = requestData.get("service_domain");
+if (serviceDomain == null || serviceDomain == "") {
+    serviceDomain = "desk.zoho.com";
+}
+deskBaseUrl = serviceDomain;
+if (deskBaseUrl.contains("http") == false) {
+    deskBaseUrl = "https://" + serviceDomain;
+}
+
+installationId = requestData.get("service_app_id");
+if (installationId == null || installationId == "") {
+    installationId = requestData.get("app_install_id");
+}
+
+debug.put("payload_detectado", payload != null);
+debug.put("request_method", requestData.get("request_method"));
+debug.put("org_id", orgId);
+debug.put("service_domain", serviceDomain);
+debug.put("desk_base_url", deskBaseUrl);
+debug.put("service_app_id", installationId);
+debug.put("sigma_execution_domain", requestData.get("sigma_execution_domain"));
+
+if (payload == null) {
+    response.put("erro", "payload_nao_recebido");
+    response.put("mensagemAmigavel", "A function nao recebeu payload do widget.");
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
+}
+
+valorTotal = payload.get("valor_total");
+if (valorTotal == null || valorTotal == "") {
+    valorTotal = 0;
+}
+valorTotal = valorTotal.toDecimal();
+
+cpfCnpj = payload.get("cpf_cnpj");
+produtos = payload.get("produtos");
+if (produtos == null) {
+    produtos = List();
+}
+timeEntries = payload.get("time_entries");
+if (timeEntries == null) {
+    timeEntries = List();
+}
+pagador = payload.get("pagador");
+if (pagador == null) {
+    pagador = Map();
+}
+
+diasVencimento = payload.get("dias_vencimento");
+if (diasVencimento == null || diasVencimento == "") {
+    diasVencimento = 5;
+}
+multa = payload.get("multa");
+if (multa == null || multa == "") {
+    multa = 0;
+}
+juros = payload.get("juros");
+cnpjEmissor = payload.get("cnpj_emissor");
+apiKey = payload.get("api_key");
+token = payload.get("token");
+apiKeySource = "payload";
+tokenSource = "payload";
+diasDescontoAntecipado = payload.get("dias_desconto_antecipado");
+descontoAntecipadoPercentual = payload.get("desconto_antecipado_percentual");
+exibirFraseFixa = payload.get("exibir_frase_fixa");
+diasLimiteAposVencimento = payload.get("dias_limite_apos_vencimento");
+ticketId = payload.get("ticket_id");
 
 if (valorTotal < 3.00) {
     response.put("erro", "valor_minimo_nao_atingido");
     response.put("mensagemAmigavel", "O valor minimo de R$ 3,00 nao foi atingido.");
-    return response;
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
 }
 
-if (apiKey == null || apiKey == "" || token == null || token == "") {
-    configList = zoho.desk.getRecords("configuracaoExtensaoPagHiper", 1, 1, "zohodesk_conn");
-    if (configList.get("data").size() > 0) {
-        configRecord = configList.get("data").get(0);
-        if (apiKey == null || apiKey == "") {
-            apiKey = configRecord.get("apiKey");
+headersDesk = Map();
+if (orgId != null && orgId != "") {
+    headersDesk.put("orgId", orgId);
+}
+headersDesk.put("Content-Type", "application/json");
+
+configParams = Map();
+if (installationId != null && installationId != "") {
+    try {
+        configResponse = invokeurl [
+            url: deskBaseUrl + "/api/v1/installedExtensions/" + installationId + "/configParams"
+            type: GET
+            headers: headersDesk
+            connection: "zohodesk_conn"
+        ];
+        variables = configResponse.get("variables");
+        if (variables == null) {
+            variables = configResponse.get("config");
         }
-        if (apiKey == null || apiKey == "") {
-            apiKey = configRecord.get("cf_apiKey");
+        if (variables == null) {
+            variables = configResponse.get("data");
         }
-        if (token == null || token == "") {
-            token = configRecord.get("token");
+        if (variables != null) {
+            for each variable in variables {
+                configParams.put(variable.get("name"), variable.get("value"));
+            }
         }
-        if (token == null || token == "") {
-            token = configRecord.get("cf_token");
+        debug.put("config_params_lidos", true);
+    } catch (configError) {
+        debug.put("config_params_lidos", false);
+        debug.put("config_params_erro", configError.toString());
+    }
+} else {
+    debug.put("config_params_lidos", false);
+    debug.put("config_params_erro", "service_app_id/app_install_id vazio");
+}
+
+configApiKey = configParams.get("api_key");
+configToken = configParams.get("token");
+
+if (configApiKey != null && configApiKey != "") {
+    apiKey = configApiKey;
+    apiKeySource = "configParams";
+}
+if (configToken != null && configToken != "") {
+    token = configToken;
+    tokenSource = "configParams";
+}
+if (apiKey == null || apiKey == "" || apiKey == "{{api_key}}") {
+    apiKey = payload.get("api_key");
+    apiKeySource = "payload";
+}
+if (token == null || token == "" || token == "{{token}}") {
+    token = payload.get("token");
+    tokenSource = "payload";
+}
+if (cnpjEmissor == null || cnpjEmissor == "" || cnpjEmissor == "{{cnpj_emissor}}") {
+    cnpjEmissor = configParams.get("cnpj_emissor");
+}
+if (diasVencimento == null || diasVencimento == "") {
+    diasVencimento = configParams.get("dias_vencimento_padrao");
+}
+if (multa == null || multa == "") {
+    multa = configParams.get("multa_atraso_percentual");
+}
+if (juros == null || juros == "") {
+    juros = configParams.get("aplicar_juros_mensal");
+}
+if (diasDescontoAntecipado == null || diasDescontoAntecipado == "") {
+    diasDescontoAntecipado = configParams.get("dias_desconto_antecipado");
+}
+if (descontoAntecipadoPercentual == null || descontoAntecipadoPercentual == "") {
+    descontoAntecipadoPercentual = configParams.get("desconto_antecipado_percentual");
+}
+if (exibirFraseFixa == null || exibirFraseFixa == "") {
+    exibirFraseFixa = configParams.get("exibir_frase_fixa");
+}
+if (diasLimiteAposVencimento == null || diasLimiteAposVencimento == "") {
+    diasLimiteAposVencimento = configParams.get("dias_limite_apos_vencimento");
+}
+
+apiKeyIndex = -1;
+if (apiKey != null) {
+    apiKey = apiKey.toString().trim();
+    apiKeyLower = apiKey.toLowerCase();
+    apiKeyIndex = apiKeyLower.indexOf("apk_");
+    if (apiKeyIndex > 0) {
+        apiKey = apiKey.subString(apiKeyIndex, apiKey.length());
+    }
+    if (apiKey.startsWith("APK_")) {
+        apiKey = "apk_" + apiKey.subString(4, apiKey.length());
+    }
+}
+if (token != null) {
+    token = token.toString().trim();
+}
+
+credenciaisDebug = Map();
+credenciaisDebug.put("api_key_source", apiKeySource);
+credenciaisDebug.put("token_source", tokenSource);
+credenciaisDebug.put("api_key_preenchida", apiKey != null && apiKey != "");
+credenciaisDebug.put("token_preenchido", token != null && token != "");
+if (apiKey != null) {
+    credenciaisDebug.put("api_key_tamanho", apiKey.length());
+    credenciaisDebug.put("api_key_comeca_com_apk", apiKey.startsWith("apk_"));
+    credenciaisDebug.put("api_key_posicao_apk_bruto", apiKeyIndex);
+}
+if (token != null) {
+    credenciaisDebug.put("token_tamanho", token.length());
+    credenciaisDebug.put("token_comeca_com_apk", token.startsWith("apk_"));
+}
+debug.put("credenciais_paghiper", credenciaisDebug);
+
+if (apiKey != null && apiKey != "" && apiKey.startsWith("apk_") == false) {
+    response.put("erro", "api_key_paghiper_invalida");
+    response.put("mensagemAmigavel", "A API Key da PagHiper precisa comecar com apk_. Confira se voce nao colou o Token no campo API Key.");
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
+}
+
+if ((pagador.get("nome") == null || pagador.get("nome") == "") && ticketId != null && ticketId != "") {
+    try {
+        ticketResponse = invokeurl [
+            url: deskBaseUrl + "/api/v1/tickets/" + ticketId
+            type: GET
+            headers: headersDesk
+            connection: "zohodesk_conn"
+        ];
+        contactId = ticketResponse.get("contactId");
+        accountId = ticketResponse.get("accountId");
+        deskPayer = null;
+        if (contactId != null && contactId != "") {
+            deskPayer = invokeurl [
+                url: deskBaseUrl + "/api/v1/contacts/" + contactId
+                type: GET
+                headers: headersDesk
+                connection: "zohodesk_conn"
+            ];
+        } else if (accountId != null && accountId != "") {
+            deskPayer = invokeurl [
+                url: deskBaseUrl + "/api/v1/accounts/" + accountId
+                type: GET
+                headers: headersDesk
+                connection: "zohodesk_conn"
+            ];
         }
+        if (deskPayer != null) {
+            nomeDesk = deskPayer.get("accountName");
+            if (nomeDesk == null || nomeDesk == "") {
+                nomeDesk = (ifnull(deskPayer.get("firstName"), "") + " " + ifnull(deskPayer.get("lastName"), "")).trim();
+            }
+            pagador.put("nome", nomeDesk);
+            pagador.put("email", deskPayer.get("email"));
+            pagador.put("telefone", ifnull(deskPayer.get("phone"), deskPayer.get("mobile")));
+        }
+        debug.put("pagador_lido_no_desk", true);
+    } catch (payerError) {
+        debug.put("pagador_lido_no_desk", false);
+        debug.put("pagador_erro", payerError.toString());
     }
 }
 
 if (apiKey == null || apiKey == "" || token == null || token == "") {
     response.put("erro", "plugin_nao_configurado");
     response.put("mensagemAmigavel", "Configure API Key e Token da PagHiper nas configuracoes da extensao.");
-    return response;
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
+}
+
+if (pagador.get("nome") == null || pagador.get("nome") == "" || pagador.get("email") == null || pagador.get("email") == "") {
+    response.put("erro", "pagador_incompleto");
+    response.put("mensagemAmigavel", "Informe nome e e-mail do pagador no contato/conta do ticket.");
+    response.put("debug", debug);
+    customResponse = Map();
+    customResponse.put("statusCode", 200);
+    customResponse.put("contentType", "application/json");
+    customResponse.put("message", response);
+    return customResponse;
 }
 
 endpoint = "https://api.paghiper.com/transaction/create/";
@@ -54,25 +319,31 @@ for each produto in produtos {
     item.put("description", produto.get("nome"));
     item.put("quantity", 1);
     item.put("item_id", produto.get("id"));
-    precoCents = (produto.get("preco") * 100).round(0);
-    item.put("price_cents", precoCents);
+    preco = produto.get("preco");
+    if (preco == null || preco == "") {
+        preco = 0;
+    }
+    item.put("price_cents", (preco.toDecimal() * 100).round(0));
     itensPayload.add(item);
 }
 
-timeEntries = data.get("time_entries");
 for each lancamento in timeEntries {
     item = Map();
     item.put("description", "Atendimento por tempo - " + lancamento.get("id"));
     item.put("quantity", 1);
     item.put("item_id", lancamento.get("id"));
-    item.put("price_cents", (lancamento.get("cost") * 100).round(0));
+    custo = lancamento.get("cost");
+    if (custo == null || custo == "") {
+        custo = 0;
+    }
+    item.put("price_cents", (custo.toDecimal() * 100).round(0));
     itensPayload.add(item);
 }
 
 payloadPagHiper = Map();
 payloadPagHiper.put("apiKey", apiKey);
 payloadPagHiper.put("token", token);
-payloadPagHiper.put("order_id", data.get("ticket_id"));
+payloadPagHiper.put("order_id", ticketId);
 payloadPagHiper.put("type_bank_slip", "boletoA4");
 payloadPagHiper.put("payer_name", pagador.get("nome"));
 payloadPagHiper.put("payer_email", pagador.get("email"));
@@ -81,22 +352,22 @@ payloadPagHiper.put("payer_phone", pagador.get("telefone"));
 payloadPagHiper.put("days_due_date", diasVencimento);
 payloadPagHiper.put("items", itensPayload);
 
-if (multa != null && multa > 0) {
-    payloadPagHiper.put("late_payment_fine", multa.round(0));
+if (multa != null && multa != "" && multa.toDecimal() > 0) {
+    payloadPagHiper.put("late_payment_fine", multa.toDecimal().round(0));
 }
-if (juros == true) {
+if (juros == true || juros == "true" || juros == "1" || juros == 1) {
     payloadPagHiper.put("per_day_interest", true);
 }
-if (exibirFraseFixa == true) {
+if (exibirFraseFixa == true || exibirFraseFixa == "true" || exibirFraseFixa == "1" || exibirFraseFixa == 1) {
     payloadPagHiper.put("fixed_description", true);
 }
-if (diasDescontoAntecipado != null && diasDescontoAntecipado > 0 && descontoAntecipadoPercentual != null && descontoAntecipadoPercentual > 0) {
-    descontoCents = ((valorTotal * descontoAntecipadoPercentual / 100) * 100).round(0);
-    payloadPagHiper.put("early_payment_discounts_days", diasDescontoAntecipado.round(0));
+if (diasDescontoAntecipado != null && diasDescontoAntecipado != "" && diasDescontoAntecipado.toDecimal() > 0 && descontoAntecipadoPercentual != null && descontoAntecipadoPercentual != "" && descontoAntecipadoPercentual.toDecimal() > 0) {
+    descontoCents = ((valorTotal * descontoAntecipadoPercentual.toDecimal() / 100) * 100).round(0);
+    payloadPagHiper.put("early_payment_discounts_days", diasDescontoAntecipado.toDecimal().round(0));
     payloadPagHiper.put("early_payment_discounts_cents", descontoCents);
 }
-if (diasLimiteAposVencimento != null && diasLimiteAposVencimento >= 5 && diasLimiteAposVencimento <= 30) {
-    payloadPagHiper.put("open_after_day_due", diasLimiteAposVencimento.round(0));
+if (diasLimiteAposVencimento != null && diasLimiteAposVencimento != "" && diasLimiteAposVencimento.toDecimal() >= 5 && diasLimiteAposVencimento.toDecimal() <= 30) {
+    payloadPagHiper.put("open_after_day_due", diasLimiteAposVencimento.toDecimal().round(0));
 }
 if (cnpjEmissor != null && cnpjEmissor != "") {
     payloadPagHiper.put("seller_description", "CNPJ emissor: " + cnpjEmissor);
@@ -111,33 +382,56 @@ if (endereco != null) {
     payloadPagHiper.put("payer_zip_code", endereco.get("cep"));
 }
 
+debugPayload = Map();
+debugPayload.putAll(payloadPagHiper);
+debugPayload.put("apiKey", "****");
+debugPayload.put("token", "****");
+debug.put("paghiper_payload", debugPayload);
+
 try {
     respostaApi = invokeurl [
         url: endpoint
         type: POST
         parameters: payloadPagHiper.toString()
-        headers: {"Accept":"application/json","Content-Type":"application/json;charset=UTF-8"}
+        headers: {"Accept":"application/json"}
+        content-type: "application/json"
     ];
     respostaMap = respostaApi.toMap();
+    debug.put("paghiper_response", respostaMap);
     if (respostaMap.containsKey("response_errors")) {
-        erroObj = respostaMap.get("response_errors");
         response.put("erro", "recusa_gateway");
-        response.put("mensagemAmigavel", "A PagHiper rejeitou a transacao: " + erroObj.get("message"));
+        response.put("mensagemAmigavel", "A PagHiper rejeitou a transacao.");
     } else if (respostaMap.containsKey("create_request")) {
         createRequest = respostaMap.get("create_request");
-        bankSlip = createRequest.get("bank_slip");
-        response.put("status", createRequest.get("status"));
-        response.put("transaction_id", createRequest.get("transaction_id"));
-        response.put("url_slip", bankSlip.get("url_slip"));
-        response.put("digitable_line", bankSlip.get("digitable_line"));
-        response.put("valor_total", valorTotal);
+        result = createRequest.get("result");
+        httpCode = createRequest.get("http_code");
+        transactionId = createRequest.get("transaction_id");
+        if (result == "reject" || transactionId == null || transactionId == "" || httpCode == 401 || httpCode == "401") {
+            response.put("erro", "recusa_gateway");
+            response.put("mensagemAmigavel", "A PagHiper rejeitou a transacao: " + ifnull(createRequest.get("response_message"), "verifique os dados enviados."));
+        } else {
+            bankSlip = createRequest.get("bank_slip");
+            response.put("status", createRequest.get("status"));
+            response.put("transaction_id", transactionId);
+            if (bankSlip != null) {
+                response.put("url_slip", bankSlip.get("url_slip"));
+                response.put("digitable_line", bankSlip.get("digitable_line"));
+            }
+            response.put("valor_total", valorTotal);
+        }
     } else if (respostaMap.containsKey("transaction_receipt")) {
         receipt = respostaMap.get("transaction_receipt");
-        response.put("status", receipt.get("status"));
-        response.put("transaction_id", receipt.get("transaction_id"));
-        response.put("url_slip", receipt.get("url_slip"));
-        response.put("digitable_line", receipt.get("digitable_line"));
-        response.put("valor_total", valorTotal);
+        transactionId = receipt.get("transaction_id");
+        if (transactionId == null || transactionId == "") {
+            response.put("erro", "recusa_gateway");
+            response.put("mensagemAmigavel", "A PagHiper nao retornou o ID da transacao.");
+        } else {
+            response.put("status", receipt.get("status"));
+            response.put("transaction_id", transactionId);
+            response.put("url_slip", receipt.get("url_slip"));
+            response.put("digitable_line", receipt.get("digitable_line"));
+            response.put("valor_total", valorTotal);
+        }
     } else {
         response.put("erro", "resposta_invalida");
         response.put("mensagemAmigavel", "Retorno invalido do gateway de pagamento.");
@@ -148,4 +442,46 @@ try {
     response.put("detalhe_tecnico", e.toString());
 }
 
-return response;
+if (response.containsKey("erro") == false && ticketId != null && ticketId != "") {
+    try {
+        cf = Map();
+        cf.put("cf_boleto_id", response.get("transaction_id"));
+        cf.put("cf_status_boleto", response.get("status"));
+        cf.put("cf_link_boleto", response.get("url_slip"));
+        cf.put("cf_linha_digitavel", response.get("digitable_line"));
+        cf.put("cf_valor_boleto", valorTotal);
+        updatePayload = Map();
+        updatePayload.put("cf", cf);
+        updateTicket = invokeurl [
+            url: deskBaseUrl + "/api/v1/tickets/" + ticketId
+            type: PATCH
+            parameters: updatePayload.toString()
+            headers: headersDesk
+            content-type: "application/json"
+            connection: "zohodesk_conn"
+        ];
+        debug.put("desk_ticket_update", updateTicket);
+
+        commentPayload = Map();
+        commentPayload.put("content", "Boleto PagHiper emitido: " + response.get("transaction_id") + " | Valor: R$ " + valorTotal);
+        commentPayload.put("isPublic", false);
+        commentResponse = invokeurl [
+            url: deskBaseUrl + "/api/v1/tickets/" + ticketId + "/comments"
+            type: POST
+            parameters: commentPayload.toString()
+            headers: headersDesk
+            content-type: "application/json"
+            connection: "zohodesk_conn"
+        ];
+        debug.put("desk_comment", commentResponse);
+    } catch (deskError) {
+        debug.put("desk_update_error", deskError.toString());
+    }
+}
+
+response.put("debug", debug);
+customResponse = Map();
+customResponse.put("statusCode", 200);
+customResponse.put("contentType", "application/json");
+customResponse.put("message", response);
+return customResponse;

@@ -5,7 +5,9 @@
     "service":  "DESK",
     "storage":  false,
     "whiteListedDomains":  [
-                               "https://desk.zoho.com"
+                               "https://desk.zoho.com",
+                               "https://4180c9fa-bd12-48bd-b4bb-736116bc90ad.sigmaexecution.com",
+                               "https://6b182711-4027-423e-b16e-763aabd27a7b.sigmaexecution.com"
                            ],
     "modules":  {
                     "widgets":  [
@@ -20,7 +22,9 @@
                 },
     "cspDomains":  {
                        "connect-src":  [
-                                           "https://desk.zoho.com"
+                                           "https://desk.zoho.com",
+                                           "https://4180c9fa-bd12-48bd-b4bb-736116bc90ad.sigmaexecution.com",
+                                           "https://6b182711-4027-423e-b16e-763aabd27a7b.sigmaexecution.com"
                                        ]
                    },
     "connectors":  [
@@ -70,7 +74,7 @@
                    {
                        "name":  "api_key",
                        "displayName":  "API Key",
-                       "secure":  true,
+                       "secure":  false,
                        "type":  "text",
                        "description":  "Chave API da PagHiper.",
                        "mandatory":  true,
@@ -80,7 +84,7 @@
                    {
                        "name":  "token",
                        "displayName":  "Token",
-                       "secure":  true,
+                       "secure":  false,
                        "type":  "text",
                        "description":  "Token da conta PagHiper.",
                        "mandatory":  true,
