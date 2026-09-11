@@ -194,6 +194,30 @@ function normalizarBillStatus(entry) {
   return "unknown";
 }
 
+function usarTarifaPropriaModeloC() {
+  return CONFIG_EXTENSAO?.modeloCTarifaPropria === true ||
+    CONFIG_EXTENSAO?.modeloCTarifaPropria === "true" ||
+    CONFIG_EXTENSAO?.modeloCTarifaPropria === "on" ||
+    CONFIG_EXTENSAO?.modeloCTarifaPropria === "1" ||
+    CONFIG_EXTENSAO?.modeloCTarifaPropria === 1;
+}
+
+function obterTarifaHoraModeloC() {
+  const inputValue = Number(document.getElementById("input-tarifa-custom")?.value || 0);
+  if (inputValue > 0) return inputValue;
+  return Number(CONFIG_EXTENSAO?.modeloCValorHora || 0);
+}
+
+function calcularCustoTimeEntry(entry) {
+  const nativeCost = Number(entry.totalCost || 0);
+  if (!usarTarifaPropriaModeloC()) return nativeCost;
+
+  const tarifaHora = obterTarifaHoraModeloC();
+  if (tarifaHora <= 0) return nativeCost;
+
+  return Number(((getTimeEntrySeconds(entry) / 3600) * tarifaHora).toFixed(2));
+}
+
 function filterUnbilledTimeEntries(entries) {
   return entries.filter(entry => String(entry.billStatusNormalizado || "").toLowerCase() !== "billed");
 }
@@ -236,7 +260,7 @@ function escaparHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-// RENDERIZADOR DE STATUS DE CONTRATO (Trata ausência de contrato) [14]
+// RENDERIZADOR DE STATUS DE CONTRATO
 function renderContractStatus(contracts) {
   const container = document.getElementById("status-contrato-container");
   if (!container) return;
@@ -263,8 +287,8 @@ function renderContractStatus(contracts) {
     hasActiveContract = false;
     container.className = "status-contrato-box";
     container.innerHTML = `
-      <p class="status-contrato-title" style="color:#b71c1c;">Sem Contrato Ativo</p>
-      <p class="status-contrato-desc">Sem vigência contratual ativa. Todo tempo de atendimento billable será cobrado integralmente [14].</p>
+      <p class="status-contrato-title" style="color:#b71c1c;">Sem contrato ativo</p>
+      <p class="status-contrato-desc">As horas faturaveis selecionadas serao cobradas conforme a regra de tarifa configurada.</p>
     `;
   }
 }
@@ -285,7 +309,7 @@ function renderTimeEntriesList(entries) {
     const seconds = getTimeEntrySeconds(entry);
     const timeFormatted = formatarDuracao(seconds);
     const ownerName = entry.owner?.name || "Agente";
-    const nativeCost = parseFloat(entry.totalCost || 0);
+    const cost = calcularCustoTimeEntry(entry);
     const reference = entry.cf?.cf_referencia_cobranca || entry.cf_referencia_cobranca || "";
     const description = entry.description ||
       entry.customFields?.timeEntryName ||
@@ -303,7 +327,7 @@ function renderTimeEntriesList(entries) {
     html += `
       <div class="hora-item">
         <label class="checkbox-container">
-          <input type="checkbox" class="chk-time-entry" value="${entry.id}" data-seconds="${seconds}" data-native-cost="${nativeCost}" onchange="toggleTimeEntrySelection('${entry.id}')">
+          <input type="checkbox" class="chk-time-entry" value="${entry.id}" data-seconds="${seconds}" data-native-cost="${cost}" onchange="toggleTimeEntrySelection('${entry.id}')">
           <span class="checkmark"></span>
           <div class="hora-info">
             <span class="hora-owner">${escaparHtml(description)}</span>
@@ -311,7 +335,7 @@ function renderTimeEntriesList(entries) {
             <span class="hora-meta">Tempo ${timeFormatted} <span class="status-billing ${billStatusClass}">${escaparHtml(billStatusLabel)}</span></span>
           </div>
         </label>
-        <span class="hora-cost">${nativeCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+        <span class="hora-cost">${cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           ${reference ? `<small class="aviso-referencia">Ja cobrado: ${escaparHtml(reference)}</small>` : ""}
         </span>
       </div>
@@ -327,7 +351,7 @@ function renderTimeEntriesSummary(entries) {
   if (!summary) return;
 
   const totalSeconds = entries.reduce((total, entry) => total + getTimeEntrySeconds(entry), 0);
-  const totalCost = entries.reduce((total, entry) => total + Number(entry.totalCost || 0), 0);
+  const totalCost = entries.reduce((total, entry) => total + calcularCustoTimeEntry(entry), 0);
 
   summary.textContent = `${entries.length} entrada(s) | Tempo ${formatarDuracao(totalSeconds)} | ${totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 }
@@ -347,10 +371,11 @@ function setupTarifaCustomUI() {
   const inputRate = document.getElementById("input-tarifa-custom");
 
   // Verifica preferência de cálculo salva no Módulo (Seção 3.1)
-  if (CONFIG_EXTENSAO?.modeloCTarifaPropria === true ||
-      CONFIG_EXTENSAO?.modeloCTarifaPropria === "true") {
+  if (usarTarifaPropriaModeloC()) {
     if (customRateContainer) customRateContainer.style.display = "block";
     if (inputRate) {
+      const configuredRate = Number(CONFIG_EXTENSAO?.modeloCValorHora || 0);
+      if (configuredRate > 0) inputRate.value = configuredRate.toFixed(2);
       inputRate.removeEventListener("input", recalcularValorEEstado);
       inputRate.addEventListener("input", recalcularValorEEstado);
     }

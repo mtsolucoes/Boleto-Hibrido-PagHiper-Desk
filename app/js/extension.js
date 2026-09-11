@@ -14,7 +14,7 @@ const SCHEMA_GERAL_PROVISIONAMENTO = {
   ],
   tickets: [
     { displayLabel: "ID do Boleto", type: "Text", apiName: "cf_id_do_boleto", maxLength: 100 },
-    { displayLabel: "Status do Boleto", type: "Text", apiName: "cf_status_boleto", maxLength: 100 },
+    { displayLabel: "Status do Boleto", type: "Text", apiName: "cf_status_do_boleto", maxLength: 100 },
     { displayLabel: "Link do Boleto", type: "Website", apiName: "cf_link_do_boleto", maxLength: 250 },
     { displayLabel: "Linha Digitável", type: "Text", apiName: "cf_linha_digitavel", maxLength: 100 },
     { displayLabel: "Valor do Serviço", type: "Currency", apiName: "cf_valor_do_servico" },
@@ -98,6 +98,9 @@ async function carregarConfigExtensao() {
     diasLimiteAposVencimento: 0,
     exibirDebugCliente: false,
     modeloCTarifaPropria: false,
+    modeloCValorHora: 0,
+    exibirAbaProdutos: true,
+    exibirAbaHoras: true,
     modeloBAutoSelecionar: false
   };
 
@@ -119,7 +122,11 @@ async function carregarConfigExtensao() {
       descontoAntecipadoPercentual: Number(obterPrimeiroConfig(rawConfig, ["desconto_antecipado_percentual", "descontoAntecipadoPercentual"]) || defaults.descontoAntecipadoPercentual),
       exibirFraseFixa: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_frase_fixa", "exibirFraseFixa"])),
       diasLimiteAposVencimento: Number(obterPrimeiroConfig(rawConfig, ["dias_limite_apos_vencimento", "diasLimiteAposVencimento"]) || defaults.diasLimiteAposVencimento),
-      exibirDebugCliente: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_debug_cliente", "exibirDebugCliente"]))
+      exibirDebugCliente: configParamMarcado(obterPrimeiroConfig(rawConfig, ["exibir_debug_cliente", "exibirDebugCliente"])),
+      modeloCTarifaPropria: configParamMarcado(obterPrimeiroConfig(rawConfig, ["modelo_c_tarifa_propria", "modeloCTarifaPropria", "cf_modeloCTarifaPropria"])),
+      modeloCValorHora: Number(obterPrimeiroConfig(rawConfig, ["modelo_c_valor_hora", "modeloCValorHora", "tarifa_hora_modelo_c", "cf_modeloCValorHora"]) || defaults.modeloCValorHora),
+      exibirAbaProdutos: configParamMarcadoComPadrao(obterPrimeiroConfig(rawConfig, ["exibir_aba_produtos", "exibirAbaProdutos"]), defaults.exibirAbaProdutos),
+      exibirAbaHoras: configParamMarcadoComPadrao(obterPrimeiroConfig(rawConfig, ["exibir_aba_horas", "exibirAbaHoras"]), defaults.exibirAbaHoras)
     };
   } catch (error) {
     console.warn("[PagHiper] Config params indisponiveis; usando padrao:", error);
@@ -129,6 +136,11 @@ async function carregarConfigExtensao() {
 
 function configParamMarcado(value) {
   return value === true || value === "true" || value === "on" || value === "1" || value === 1;
+}
+
+function configParamMarcadoComPadrao(value, defaultValue) {
+  if (value === "" || value === null || value === undefined) return defaultValue;
+  return configParamMarcado(value);
 }
 
 function obterPrimeiroConfig(rawConfig, nomes) {
@@ -322,6 +334,7 @@ async function inicializarModuloConfiguracao() {
     juros: config.juros ?? config.cf_juros,
     ambientePagHiper: config.ambientePagHiper ?? config.cf_ambientePagHiper,
     modeloCTarifaPropria: config.modeloCTarifaPropria ?? config.cf_modeloCTarifaPropria,
+    modeloCValorHora: config.modeloCValorHora ?? config.cf_modeloCValorHora,
     modeloBAutoSelecionar: config.modeloBAutoSelecionar ?? config.cf_modeloBAutoSelecionar
   };
 }
@@ -364,6 +377,9 @@ async function createFieldInZoho(moduleName, fieldConfig) {
     isMandatory: false
   };
   if (fieldConfig.maxLength) payload.maxLength = String(fieldConfig.maxLength);
+  if (Array.isArray(fieldConfig.allowedValues)) {
+    payload.allowedValues = fieldConfig.allowedValues.map(value => ({ value }));
+  }
   const response = await ZOHODESK.request({
     url: getDeskApiUrl(`/api/v1/fields?module=${moduleName}`),
     type: "POST",
@@ -384,15 +400,45 @@ function loadWidgetMainScreen() {
 function aplicarPreferenciasInterface() {
   const mostrarDebug = CONFIG_EXTENSAO?.exibirDebugCliente === true ||
     CONFIG_EXTENSAO?.exibirDebugCliente === "true";
+  let exibirProdutos = CONFIG_EXTENSAO?.exibirAbaProdutos !== false &&
+    CONFIG_EXTENSAO?.exibirAbaProdutos !== "false";
+  let exibirHoras = CONFIG_EXTENSAO?.exibirAbaHoras !== false &&
+    CONFIG_EXTENSAO?.exibirAbaHoras !== "false";
+
+  if (!exibirProdutos && !exibirHoras) {
+    exibirProdutos = true;
+    exibirHoras = true;
+  }
 
   document.body.classList.toggle("debug-visivel", mostrarDebug);
   document.body.classList.toggle("debug-oculto", !mostrarDebug);
+  definirVisibilidadeAba("modelo-b", exibirProdutos);
+  definirVisibilidadeAba("modelo-c", exibirHoras);
 
-  if (!mostrarDebug && typeof activeTab !== "undefined" && activeTab === "diagnostico") {
-    const tabModeloB = document.getElementById("tab-btn-modelo-b");
-    if (tabModeloB && typeof switchTab === "function") {
-      switchTab("modelo-b", { target: tabModeloB });
-    }
+  if (!mostrarDebug) definirVisibilidadeAba("diagnostico", false);
+  else definirVisibilidadeAba("diagnostico", true);
+
+  const abaAtualDisponivel = activeTab === "modelo-b" && exibirProdutos ||
+    activeTab === "modelo-c" && exibirHoras ||
+    activeTab === "diagnostico" && mostrarDebug;
+
+  if (!abaAtualDisponivel) {
+    ativarPrimeiraAbaDisponivel(exibirProdutos, exibirHoras, mostrarDebug);
+  }
+}
+
+function definirVisibilidadeAba(tabId, visivel) {
+  const button = document.getElementById(`tab-btn-${tabId}`);
+  const content = document.getElementById(`tab-${tabId}`);
+  if (button) button.hidden = !visivel;
+  if (content) content.hidden = !visivel;
+}
+
+function ativarPrimeiraAbaDisponivel(exibirProdutos, exibirHoras, mostrarDebug) {
+  const tabId = exibirProdutos ? "modelo-b" : exibirHoras ? "modelo-c" : mostrarDebug ? "diagnostico" : "modelo-b";
+  const button = document.getElementById(`tab-btn-${tabId}`);
+  if (button && typeof switchTab === "function") {
+    switchTab(tabId, { target: button });
   }
 }
 

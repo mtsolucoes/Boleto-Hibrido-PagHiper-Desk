@@ -95,6 +95,23 @@ function isSigmaRetryableInputEnvelope(envelope) {
   );
 }
 
+function mapearStatusBoletoDesk(statusPagHiper) {
+  const status = String(statusPagHiper || "").trim().toLowerCase();
+  const statusMap = {
+    pending: "Aguardando",
+    waiting: "Aguardando",
+    processing: "Pagamento",
+    reserved: "Pagamento",
+    paid: "Pago",
+    completed: "Concluído",
+    settled: "Concluído",
+    canceled: "Cancelado",
+    cancelled: "Cancelado",
+    refunded: "Cancelado"
+  };
+  return statusMap[status] || "Aguardando";
+}
+
 const GERAR_BOLETO_SIGMA_FUNCTION_UUID = "5297c382-4918-4fbf-9279-92aeb2d166cf";
 const GERAR_BOLETO_SIGMA_FUNCTION_VERSION = "7";
 const CONSULTAR_BOLETO_SIGMA_FUNCTION_UUID = "59846e17-1d27-41a1-b6d7-576f10b8b9de";
@@ -625,6 +642,7 @@ async function diagnosticarUrlSigmaSemPlaceholders() {
 
 async function tratarRespostaSucesso(resultado) {
   const ticketId = activeTicketId || await getSdkValue("ticket.id");
+  const statusDesk = mapearStatusBoletoDesk(resultado.status || "pending");
   try {
     await ZOHODESK.request({
       url: getDeskApiUrl(`/api/v1/tickets/${ticketId}`),
@@ -632,7 +650,6 @@ async function tratarRespostaSucesso(resultado) {
       postBody: {
         cf: {
           cf_id_do_boleto: resultado.transaction_id || "",
-          cf_status_boleto: resultado.status || "pending",
           cf_link_do_boleto: resultado.url_slip || "",
           cf_linha_digitavel: resultado.digitable_line || "",
           cf_valor_do_servico: resultado.valor_total
@@ -646,12 +663,13 @@ async function tratarRespostaSucesso(resultado) {
       data: { orgId: portalOrgId },
       connectionLinkName: "zohodesk_conn"
     });
+    await atualizarStatusTicket(ticketId, resultado.status || "pending");
     await registrarReferenciasTimeEntries(resultado.transaction_id || "");
     preencherBoletoIdManual(resultado.transaction_id || "");
     await adicionarComentarioInterno(
       ticketId,
       `Boleto PagHiper emitido: ${resultado.transaction_id || "sem ID"} | ` +
-      `Valor: R$ ${Number(resultado.valor_total || 0).toFixed(2)} | Status: ${resultado.status || "pending"}`
+      `Valor: R$ ${Number(resultado.valor_total || 0).toFixed(2)} | Status: ${statusDesk}`
     );
     exibirStatus("sucesso", `Boleto emitido e ticket atualizado. ${resultado.url_slip || ""}`);
   } catch (error) {
@@ -667,13 +685,13 @@ function obterTimeEntriesSelecionados() {
     const seconds = typeof getTimeEntrySeconds === "function"
       ? getTimeEntrySeconds(entry)
       : Number(entry.secondsSpent || 0);
-    const nativeCost = Number(entry.totalCost || 0);
-    const customRate = Number(document.getElementById("input-tarifa-custom")?.value || 0);
-    const useCustomRate = Boolean(CONFIG_EXTENSAO?.modeloCTarifaPropria);
+    const cost = typeof calcularCustoTimeEntry === "function"
+      ? calcularCustoTimeEntry(entry)
+      : Number(entry.totalCost || 0);
     return {
       id: entry.id,
       seconds,
-      cost: Number((useCustomRate ? seconds / 3600 * customRate : nativeCost).toFixed(2))
+      cost: Number(cost.toFixed(2))
     };
   }).filter(Boolean);
 }
@@ -931,16 +949,15 @@ function requestComTimeout(factory, message, timeoutMs) {
 
 async function atualizarDadosBoletoTicket(ticketId, resultado) {
   const boletoId = resultado.transaction_id || "";
-  const status = resultado.status || "unknown";
   const camposPrincipais = {
     cf_id_do_boleto: boletoId,
-    cf_status_boleto: status,
     cf_link_do_boleto: resultado.url_slip || "",
     cf_linha_digitavel: resultado.digitable_line || "",
     cf_valor_do_servico: resultado.valor_total || 0
   };
 
   await atualizarCamposCustomizadosTicket(ticketId, camposPrincipais);
+  await atualizarStatusTicket(ticketId, resultado.status || "unknown");
 
   const camposExtras = {};
   if (resultado.url_slip_pdf) camposExtras.cf_link_pdf_boleto = resultado.url_slip_pdf;
@@ -976,5 +993,14 @@ async function atualizarCamposCustomizadosTicket(ticketId, camposCf) {
 }
 
 async function atualizarStatusTicket(ticketId, status) {
-  await atualizarCamposCustomizadosTicket(ticketId, { cf_status_boleto: status });
+  const statusDesk = mapearStatusBoletoDesk(status);
+  registrarDiagnosticoEmissao("Atualizando Status do Boleto no ticket", {
+    ticketId,
+    campo: "cf_status_do_boleto",
+    tipoEsperado: "linha_unica_texto",
+    statusOriginal: status,
+    statusDesk
+  });
+  const resposta = await atualizarCamposCustomizadosTicket(ticketId, { cf_status_do_boleto: statusDesk });
+  registrarDiagnosticoEmissao("Resposta ao atualizar Status do Boleto", resposta);
 }

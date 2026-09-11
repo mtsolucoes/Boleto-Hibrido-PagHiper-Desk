@@ -22,6 +22,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   min-height: 100%;
@@ -160,7 +164,7 @@ input:focus {
 
 .tab-header {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 4px;
   width: 100%;
   padding: 4px;
@@ -168,10 +172,6 @@ input:focus {
   background: #e9eef5;
   border: 1px solid var(--border);
   border-radius: 8px;
-}
-
-.debug-oculto .tab-header {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .tab-btn {

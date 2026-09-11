@@ -26,6 +26,9 @@ async function inicializarTelaProdutos() {
         juros: false,
         exibirDebugCliente: false,
         modeloCTarifaPropria: false,
+        modeloCValorHora: 0,
+        exibirAbaProdutos: true,
+        exibirAbaHoras: true,
         modeloBAutoSelecionar: false
       };
     }

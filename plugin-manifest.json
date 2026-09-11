@@ -162,6 +162,46 @@
                        "authType":  "org"
                    },
                    {
+                       "name":  "modelo_c_tarifa_propria",
+                       "displayName":  "Modelo C - Usar tarifa propria por hora",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, o Modelo C calcula as entradas de hora usando a tarifa definida na extensao em vez do custo calculado pelo Desk.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "modelo_c_valor_hora",
+                       "displayName":  "Modelo C - Valor da hora",
+                       "secure":  false,
+                       "type":  "number",
+                       "description":  "Valor em reais usado para calcular cada hora no Modelo C quando a tarifa propria estiver ativa.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "exibir_aba_produtos",
+                       "displayName":  "Exibir aba Produtos",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, mostra a cobranca por produtos no widget.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
+                       "name":  "exibir_aba_horas",
+                       "displayName":  "Exibir aba Horas",
+                       "secure":  false,
+                       "type":  "checkbox",
+                       "description":  "Quando marcado, mostra a cobranca por entradas de hora no widget.",
+                       "mandatory":  false,
+                       "userdefined":  true,
+                       "authType":  "org"
+                   },
+                   {
                        "name":  "exibir_debug_cliente",
                        "displayName":  "Exibir diagnostico/debug no widget",
                        "secure":  false,

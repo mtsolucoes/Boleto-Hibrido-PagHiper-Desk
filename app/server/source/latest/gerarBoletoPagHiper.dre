@@ -447,9 +447,21 @@ try {
 
 if (response.containsKey("erro") == false && ticketId != null && ticketId != "") {
     try {
+        statusPagHiper = ifnull(response.get("status"), "pending");
+        statusDesk = "Aguardando";
+        if (statusPagHiper == "processing" || statusPagHiper == "reserved") {
+            statusDesk = "Pagamento";
+        } else if (statusPagHiper == "paid") {
+            statusDesk = "Pago";
+        } else if (statusPagHiper == "completed" || statusPagHiper == "settled") {
+            statusDesk = "Concluído";
+        } else if (statusPagHiper == "canceled" || statusPagHiper == "cancelled" || statusPagHiper == "refunded") {
+            statusDesk = "Cancelado";
+        }
+
         cf = Map();
         cf.put("cf_id_do_boleto", response.get("transaction_id"));
-        cf.put("cf_status_boleto", response.get("status"));
+        cf.put("cf_status_do_boleto", statusDesk);
         cf.put("cf_link_do_boleto", response.get("url_slip"));
         cf.put("cf_linha_digitavel", response.get("digitable_line"));
         cf.put("cf_valor_do_servico", valorTotal);
