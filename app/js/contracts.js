@@ -23,7 +23,9 @@ async function initModeloCScreen() {
       url: getDeskApiUrl(`/api/v1/tickets/${ticketId}?include=contacts`),
       type: "GET",
       postBody: {},
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      data: { orgId: portalOrgId },
+      connectionLinkName: DESK_CONNECTION_NAME
     });
     const ticketData = parseDeskApiResponse(ticketRes);
     const accountId = ticketData.accountId || await fetchContactAccountId(ticketData.contactId);
@@ -76,7 +78,9 @@ async function fetchAccountContracts(accountId) {
       url: getDeskApiUrl(`/api/v1/accounts/${accountId}/contracts?contractStatus=ACTIVE`),
       type: "GET",
       postBody: {},
-      headers: { orgId: portalOrgId }
+      headers: { orgId: portalOrgId },
+      data: { orgId: portalOrgId },
+      connectionLinkName: DESK_CONNECTION_NAME
     });
     const parsed = parseDeskApiResponse(res);
     const entries = Array.isArray(parsed) ? parsed : parsed?.data;
@@ -91,31 +95,107 @@ async function fetchAccountContracts(accountId) {
   }
 }
 
-// GET /api/v1/tickets/{ticketId}/timeEntry?billStatus=billable [12, 13]
+// GET /api/v1/tickets/{ticketId}/timeEntry
 async function fetchTicketTimeEntries(ticketId) {
-  try {
-    const res = await ZOHODESK.request({
-      url: getDeskApiUrl(`/api/v1/tickets/${ticketId}/timeEntry?billStatus=billable`),
-      type: "GET",
-      postBody: {},
-      headers: { orgId: portalOrgId }
-    });
-    const parsed = parseDeskApiResponse(res);
-    const entries = Array.isArray(parsed) ? parsed : parsed?.data;
-    if (!Array.isArray(entries)) {
-      console.warn("[PagHiper] Resposta de Time Entries sem data:", parsed);
-      return [];
+  const tentativas = [
+    {
+      nome: "entradas faturaveis",
+      path: `/api/v1/tickets/${ticketId}/timeEntry?module=tickets&from=0&limit=100&include=owner&billStatus=billable`
+    },
+    {
+      nome: "todas as entradas",
+      path: `/api/v1/tickets/${ticketId}/timeEntry?module=tickets&from=0&limit=100&include=owner`
+    },
+    {
+      nome: "compatibilidade sem module",
+      path: `/api/v1/tickets/${ticketId}/timeEntry?from=0&limit=100&include=owner`
     }
-    return entries;
-  } catch (err) {
-    console.error("[PagHiper] Falha ao buscar lançamentos de tempo:", err);
-    return [];
+  ];
+
+  const diagnostico = [];
+  for (const tentativa of tentativas) {
+    try {
+      const res = await requestDeskGet(tentativa.path);
+      const parsed = parseDeskApiResponse(res);
+      const entries = extrairListaTimeEntries(parsed).map(normalizarTimeEntry);
+      diagnostico.push({
+        tentativa: tentativa.nome,
+        quantidade: entries.length
+      });
+
+      if (entries.length > 0 || tentativa.nome === "compatibilidade sem module") {
+        registrarDiagnosticoModeloC("Busca de entradas de hora", {
+          ticketId,
+          tentativaUsada: tentativa.nome,
+          diagnostico
+        });
+        return entries;
+      }
+    } catch (err) {
+      diagnostico.push({
+        tentativa: tentativa.nome,
+        erro: err?.message || String(err)
+      });
+      console.warn(`[PagHiper] Falha ao buscar Time Entries (${tentativa.nome}):`, err);
+    }
   }
+
+  registrarDiagnosticoModeloC("Falha ao buscar entradas de hora", {
+    ticketId,
+    diagnostico
+  });
+  return [];
 }
 
-// Mantém entradas já referenciadas: o agente deve ser avisado, não bloqueado.
+async function requestDeskGet(path) {
+  return ZOHODESK.request({
+    url: getDeskApiUrl(path),
+    type: "GET",
+    postBody: {},
+    headers: { orgId: portalOrgId },
+    data: { orgId: portalOrgId },
+    connectionLinkName: DESK_CONNECTION_NAME
+  });
+}
+
+function registrarDiagnosticoModeloC(titulo, dados) {
+  if (typeof registrarDiagnosticoEmissao !== "function") return;
+  if (CONFIG_EXTENSAO?.exibirDebugCliente !== true && CONFIG_EXTENSAO?.exibirDebugCliente !== "true") return;
+  registrarDiagnosticoEmissao(titulo, dados);
+}
+
+function extrairListaTimeEntries(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed?.data)) return parsed.data;
+  if (Array.isArray(parsed?.timeEntries)) return parsed.timeEntries;
+  if (Array.isArray(parsed?.timeEntry)) return parsed.timeEntry;
+  return [];
+}
+
+function normalizarTimeEntry(entry) {
+  const normalized = { ...entry };
+  normalized.billStatusNormalizado = normalizarBillStatus(entry);
+  normalized.secondsSpent = getTimeEntrySeconds(entry);
+  normalized.totalCost = Number(entry.totalCost ?? entry.cost ?? entry.totalCosts ?? entry.charge ?? 0);
+  return normalized;
+}
+
+function normalizarBillStatus(entry) {
+  const rawStatus = String(
+    entry.billStatus ||
+    entry.billingStatus ||
+    entry.billableStatus ||
+    entry.bill_status ||
+    ""
+  ).trim();
+  if (rawStatus) return rawStatus;
+  if (entry.isBillable === false || entry.billable === false) return "nonBillable";
+  if (entry.isBillable === true || entry.billable === true) return "billable";
+  return "unknown";
+}
+
 function filterUnbilledTimeEntries(entries) {
-  return entries;
+  return entries.filter(entry => String(entry.billStatusNormalizado || "").toLowerCase() !== "billed");
 }
 
 function getTimeEntrySeconds(entry) {
@@ -125,6 +205,35 @@ function getTimeEntrySeconds(entry) {
   const hoursSpent = Number(entry.hoursSpent || 0);
   const minutesSpent = Number(entry.minutesSpent || 0);
   return (hoursSpent * 3600) + (minutesSpent * 60);
+}
+
+function formatarDuracao(seconds) {
+  const total = Number(seconds || 0);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainingSeconds = total % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function formatarDataHora(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function escaparHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 // RENDERIZADOR DE STATUS DE CONTRATO (Trata ausência de contrato) [14]
@@ -173,14 +282,23 @@ function renderTimeEntriesList(entries) {
 
   let html = "";
   entries.forEach(entry => {
-    // Converte segundosspent para formato HH:MM:SS
     const seconds = getTimeEntrySeconds(entry);
-    const timeFormatted = new Date(seconds * 1000).toISOString().substr(11, 8);
+    const timeFormatted = formatarDuracao(seconds);
     const ownerName = entry.owner?.name || "Agente";
-    
-    // Custo nativo calculado pelo Desk
     const nativeCost = parseFloat(entry.totalCost || 0);
     const reference = entry.cf?.cf_referencia_cobranca || entry.cf_referencia_cobranca || "";
+    const description = entry.description ||
+      entry.customFields?.timeEntryName ||
+      entry.subject ||
+      "Entrada de hora";
+    const executedTime = formatarDataHora(entry.executedTime || entry.createdTime);
+    const billStatus = String(entry.billStatusNormalizado || "unknown");
+    const billStatusLabel = billStatus === "billable"
+      ? "Faturavel"
+      : billStatus === "nonBillable"
+        ? "Nao faturavel"
+        : billStatus;
+    const billStatusClass = billStatus === "billable" ? "is-billable" : "is-not-billable";
 
     html += `
       <div class="hora-item">
@@ -188,12 +306,13 @@ function renderTimeEntriesList(entries) {
           <input type="checkbox" class="chk-time-entry" value="${entry.id}" data-seconds="${seconds}" data-native-cost="${nativeCost}" onchange="toggleTimeEntrySelection('${entry.id}')">
           <span class="checkmark"></span>
           <div class="hora-info">
-            <span class="hora-owner">${ownerName}</span>
-            <span class="hora-spent">Tempo: ${timeFormatted}</span>
+            <span class="hora-owner">${escaparHtml(description)}</span>
+            <span class="hora-spent">${escaparHtml(ownerName)}${executedTime ? ` - ${executedTime}` : ""}</span>
+            <span class="hora-meta">Tempo ${timeFormatted} <span class="status-billing ${billStatusClass}">${escaparHtml(billStatusLabel)}</span></span>
           </div>
         </label>
         <span class="hora-cost">${nativeCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          ${reference ? `<small class="aviso-referencia">Já cobrado: ${reference}</small>` : ""}
+          ${reference ? `<small class="aviso-referencia">Ja cobrado: ${escaparHtml(reference)}</small>` : ""}
         </span>
       </div>
     `;
@@ -209,11 +328,8 @@ function renderTimeEntriesSummary(entries) {
 
   const totalSeconds = entries.reduce((total, entry) => total + getTimeEntrySeconds(entry), 0);
   const totalCost = entries.reduce((total, entry) => total + Number(entry.totalCost || 0), 0);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
 
-  summary.textContent = `Total disponível: ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")} | ${totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+  summary.textContent = `${entries.length} entrada(s) | Tempo ${formatarDuracao(totalSeconds)} | ${totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 }
 
 function toggleTimeEntrySelection(entryId) {
